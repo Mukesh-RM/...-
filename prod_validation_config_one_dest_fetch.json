@@ -1,0 +1,2634 @@
+{
+  "batch_size": 25000,
+  "query_timeout_seconds": 600,
+  "log_table": "dbo.L1ValidationLog_last1",
+  "log_server": "ncsql42",
+  "log_database": "PI_EDWDDS",
+  "options": {
+    "use_nolock": true,
+    "log_matches": false,
+    "log_granularity": "per_key",
+    "log_flush_every": 5000,
+    "single_pass_custom_query": true,
+    "log_preload_progress": false,
+    "check_orphans_in_destination": false,
+    "fix_blanks": true,
+    "fix_mismatches": true,
+    "preload_fetch_size": 20000,
+    "preload_progress_every": 200000,
+    "temp_key_column_type": "NVARCHAR(500)",
+    "warn_on_duplicate_keys": true,
+    "cast_temp_keys_for_join": true
+  },
+  "queries": {
+    "source_key_batch": "SELECT TOP ({batch_size}) {columns} FROM {table} {nolock_hint} {where} ORDER BY {order_by} ASC",
+    "destination_preload": "SELECT {columns} FROM {table} {nolock_hint} {where}",
+    "batch_row_fetch": "SELECT {select_columns} FROM {table} t {nolock_hint} JOIN {temp_table} tmp ON {join_condition}",
+    "destination_update": "UPDATE {table} SET {column} = ? WHERE {where}",
+    "temp_table_create": "CREATE TABLE {temp_table} ({column_defs})",
+    "temp_table_truncate": "TRUNCATE TABLE {temp_table}",
+    "temp_table_drop": "DROP TABLE {temp_table}",
+    "temp_table_insert": "INSERT INTO {temp_table} ({columns}) VALUES ({placeholders})",
+    "exception_report": "SELECT client_id, flow_id, audit_id, client_audit_id, source_table, source_column, destination_table, destination_column, issue_type, value_status, join_key_status, key_value, source_value, destination_value, exception_reason, batch_number, log_time, details FROM {log_table} WHERE run_id = ? AND issue_type NOT IN ({exclude_issue_types}) ORDER BY client_id, flow_id, source_table, source_column"
+  },
+  "identity": {
+    "primary_key_patterns": [
+      "^client_?audit_?id$",
+      "^client_?id$",
+      "^audit_?id$"
+    ],
+    "client_id_patterns": [
+      "^client_?id$",
+      "^client_?key$"
+    ],
+    "flow_id_patterns": [
+      "^flow_?id$"
+    ],
+    "audit_id_patterns": [
+      "^audit_?id$",
+      "^auditid$"
+    ],
+    "client_audit_id_patterns": [
+      "^client_?audit_?id$",
+      "^clientauditid$"
+    ],
+    "source_column_fallbacks": {
+      "client_id": [
+        "ClientID",
+        "ClientId",
+        "client_id",
+        "CLIENTID"
+      ],
+      "audit_id": [
+        "AuditId",
+        "Audit_id",
+        "AuditID",
+        "audit_id",
+        "AUDITID"
+      ],
+      "client_audit_id": [
+        "ClientAuditId",
+        "ClientAuditID"
+      ]
+    },
+    "destination_column_fallbacks": {
+      "client_id": [
+        "ClientID",
+        "ClientId",
+        "client_id",
+        "CLIENTID"
+      ],
+      "audit_id": [
+        "AuditId",
+        "Audit_id",
+        "AuditID",
+        "audit_id",
+        "AUDITID"
+      ],
+      "client_audit_id": [
+        "ClientAuditId",
+        "ClientAuditID"
+      ]
+    }
+  },
+  "normalization_defaults": {
+    "type": "numeric",
+    "trim": true,
+    "collapse_whitespace": true,
+    "case_insensitive": true
+  },
+  "date_formats": {
+    "enabled": false,
+    "formats": [
+      "%Y-%m-%d",
+      "%Y-%m-%d %H:%M:%S",
+      "%m/%d/%Y",
+      "%m/%d/%Y %H:%M:%S",
+      "%d/%m/%Y",
+      "%Y%m%d",
+      "%Y-%m-%dT%H:%M:%S"
+    ]
+  },
+  "servers": {
+    "ncsql46": {
+      "driver": "ODBC Driver 17 for SQL Server",
+      "server": "ncsql46",
+      "auth": "windows"
+    },
+    "ncsql42": {
+      "driver": "ODBC Driver 17 for SQL Server",
+      "server": "ncsql42",
+      "auth": "windows"
+    }
+  },
+  "clients": [
+    {
+      "client_id": "112",
+      "flow_id": "1",
+      "source_server": "ncsql46",
+      "source_database": "prod_Workflow_UMR",
+      "destination_server": "ncsql42",
+      "destination_database": "PI_EDWDDS",
+      "source_table": "dbo.Customvalues1",
+      "destination_table": "dbo.CustomvaluesQCTestBackup",
+      "fetch_mode": "custom_query",
+      "source_fetch_query": "SELECT a.ClientAuditId, cv.QC_Outcome, 112 AS ClientId, 1 AS FlowId FROM prod_Workflow_UMR.dbo.Audit (NOLOCK) a JOIN prod_Workflow_UMR.dbo.Customvalues1 cv (NOLOCK) ON a.id = cv.Audit_id WHERE cv.claimlineuid IS NULL AND cv.QC_Outcome IS NOT NULL",
+      "destination_fetch_query": "SELECT ClientAuditId, QC_Outcome FROM PI_EDWDDS.dbo.CustomvaluesQCTestBackup WITH (NOLOCK)",
+      "reference_keys": [
+        {
+          "name": "clientauditid",
+          "source_column": "ClientAuditId",
+          "destination_column": "ClientAuditId"
+        }
+      ],
+      "validation_pairs": [
+        [
+          "QC_Outcome",
+          "QC_Outcome"
+        ]
+      ],
+      "exclude_from_validation": [],
+      "normalization": {
+        "type": "text",
+        "trim": true,
+        "collapse_whitespace": true,
+        "case_insensitive": true
+      }
+    },
+    {
+      "client_id": "80",
+      "flow_id": "1",
+      "source_server": "ncsql46",
+      "source_database": "prod_Workflow_UHCUNet",
+      "destination_server": "ncsql42",
+      "destination_database": "PI_EDWDDS",
+      "source_table": "dbo.Customvalues1",
+      "destination_table": "dbo.CustomvaluesQCTestBackup",
+      "fetch_mode": "custom_query",
+      "source_fetch_query": "SELECT a.ClientAuditId, cv.QC_Outcome, 80 AS ClientId, 1 AS FlowId FROM prod_Workflow_UHCUNet.dbo.Audit (NOLOCK) a JOIN prod_Workflow_UHCUNet.dbo.Customvalues1 cv (NOLOCK) ON a.id = cv.Audit_id WHERE cv.claimlineuid IS NULL AND cv.QC_Outcome IS NOT NULL",
+      "destination_fetch_query": "SELECT ClientAuditId, QC_Outcome FROM PI_EDWDDS.dbo.CustomvaluesQCTestBackup WITH (NOLOCK)",
+      "reference_keys": [
+        {
+          "name": "clientauditid",
+          "source_column": "ClientAuditId",
+          "destination_column": "ClientAuditId"
+        }
+      ],
+      "validation_pairs": [
+        [
+          "QC_Outcome",
+          "QC_Outcome"
+        ]
+      ],
+      "exclude_from_validation": [],
+      "normalization": {
+        "type": "text",
+        "trim": true,
+        "collapse_whitespace": true,
+        "case_insensitive": true
+      }
+    },
+    {
+      "client_id": "80",
+      "flow_id": "101",
+      "source_server": "ncsql46",
+      "source_database": "prod_Workflow_UHCUNet",
+      "destination_server": "ncsql42",
+      "destination_database": "PI_EDWDDS",
+      "source_table": "dbo.Customvalues101",
+      "destination_table": "dbo.CustomvaluesQCTestBackup",
+      "fetch_mode": "custom_query",
+      "source_fetch_query": "SELECT a.ClientAuditId, cv.QC_Outcome, 80 AS ClientId, 101 AS FlowId FROM prod_Workflow_UHCUNet.dbo.Audit (NOLOCK) a JOIN prod_Workflow_UHCUNet.dbo.Customvalues101 cv (NOLOCK) ON a.id = cv.Audit_id WHERE cv.claimlineuid IS NULL AND cv.QC_Outcome IS NOT NULL",
+      "destination_fetch_query": "SELECT ClientAuditId, QC_Outcome FROM PI_EDWDDS.dbo.CustomvaluesQCTestBackup WITH (NOLOCK)",
+      "reference_keys": [
+        {
+          "name": "clientauditid",
+          "source_column": "ClientAuditId",
+          "destination_column": "ClientAuditId"
+        }
+      ],
+      "validation_pairs": [
+        [
+          "QC_Outcome",
+          "QC_Outcome"
+        ]
+      ],
+      "exclude_from_validation": [],
+      "normalization": {
+        "type": "text",
+        "trim": true,
+        "collapse_whitespace": true,
+        "case_insensitive": true
+      }
+    },
+    {
+      "client_id": "80",
+      "flow_id": "202",
+      "source_server": "ncsql46",
+      "source_database": "prod_Workflow_UHCUNet",
+      "destination_server": "ncsql42",
+      "destination_database": "PI_EDWDDS",
+      "source_table": "dbo.Customvalues202",
+      "destination_table": "dbo.CustomvaluesQCTestBackup",
+      "fetch_mode": "custom_query",
+      "source_fetch_query": "SELECT a.ClientAuditId, cv.QC_Outcome, 80 AS ClientId, 202 AS FlowId FROM prod_Workflow_UHCUNet.dbo.Audit (NOLOCK) a JOIN prod_Workflow_UHCUNet.dbo.Customvalues202 cv (NOLOCK) ON a.id = cv.Audit_id WHERE cv.claimlineuid IS NULL AND cv.QC_Outcome IS NOT NULL",
+      "destination_fetch_query": "SELECT ClientAuditId, QC_Outcome FROM PI_EDWDDS.dbo.CustomvaluesQCTestBackup WITH (NOLOCK)",
+      "reference_keys": [
+        {
+          "name": "clientauditid",
+          "source_column": "ClientAuditId",
+          "destination_column": "ClientAuditId"
+        }
+      ],
+      "validation_pairs": [
+        [
+          "QC_Outcome",
+          "QC_Outcome"
+        ]
+      ],
+      "exclude_from_validation": [],
+      "normalization": {
+        "type": "text",
+        "trim": true,
+        "collapse_whitespace": true,
+        "case_insensitive": true
+      }
+    },
+    {
+      "client_id": "80",
+      "flow_id": "303",
+      "source_server": "ncsql46",
+      "source_database": "prod_Workflow_UHCUNet",
+      "destination_server": "ncsql42",
+      "destination_database": "PI_EDWDDS",
+      "source_table": "dbo.Customvalues303",
+      "destination_table": "dbo.CustomvaluesQCTestBackup",
+      "fetch_mode": "custom_query",
+      "source_fetch_query": "SELECT a.ClientAuditId, cv.QC_Outcome, 80 AS ClientId, 303 AS FlowId FROM prod_Workflow_UHCUNet.dbo.Audit (NOLOCK) a JOIN prod_Workflow_UHCUNet.dbo.Customvalues303 cv (NOLOCK) ON a.id = cv.Audit_id WHERE cv.claimlineuid IS NULL AND cv.QC_Outcome IS NOT NULL",
+      "destination_fetch_query": "SELECT ClientAuditId, QC_Outcome FROM PI_EDWDDS.dbo.CustomvaluesQCTestBackup WITH (NOLOCK)",
+      "reference_keys": [
+        {
+          "name": "clientauditid",
+          "source_column": "ClientAuditId",
+          "destination_column": "ClientAuditId"
+        }
+      ],
+      "validation_pairs": [
+        [
+          "QC_Outcome",
+          "QC_Outcome"
+        ]
+      ],
+      "exclude_from_validation": [],
+      "normalization": {
+        "type": "text",
+        "trim": true,
+        "collapse_whitespace": true,
+        "case_insensitive": true
+      }
+    },
+    {
+      "client_id": "80",
+      "flow_id": "404",
+      "source_server": "ncsql46",
+      "source_database": "prod_Workflow_UHCUNet",
+      "destination_server": "ncsql42",
+      "destination_database": "PI_EDWDDS",
+      "source_table": "dbo.Customvalues404",
+      "destination_table": "dbo.CustomvaluesQCTestBackup",
+      "fetch_mode": "custom_query",
+      "source_fetch_query": "SELECT a.ClientAuditId, cv.QC_Outcome, 80 AS ClientId, 404 AS FlowId FROM prod_Workflow_UHCUNet.dbo.Audit (NOLOCK) a JOIN prod_Workflow_UHCUNet.dbo.Customvalues404 cv (NOLOCK) ON a.id = cv.Audit_id WHERE cv.claimlineuid IS NULL AND cv.QC_Outcome IS NOT NULL",
+      "destination_fetch_query": "SELECT ClientAuditId, QC_Outcome FROM PI_EDWDDS.dbo.CustomvaluesQCTestBackup WITH (NOLOCK)",
+      "reference_keys": [
+        {
+          "name": "clientauditid",
+          "source_column": "ClientAuditId",
+          "destination_column": "ClientAuditId"
+        }
+      ],
+      "validation_pairs": [
+        [
+          "QC_Outcome",
+          "QC_Outcome"
+        ]
+      ],
+      "exclude_from_validation": [],
+      "normalization": {
+        "type": "text",
+        "trim": true,
+        "collapse_whitespace": true,
+        "case_insensitive": true
+      }
+    },
+    {
+      "client_id": "80",
+      "flow_id": "606",
+      "source_server": "ncsql46",
+      "source_database": "prod_Workflow_UHCUNet",
+      "destination_server": "ncsql42",
+      "destination_database": "PI_EDWDDS",
+      "source_table": "dbo.Customvalues606",
+      "destination_table": "dbo.CustomvaluesQCTestBackup",
+      "fetch_mode": "custom_query",
+      "source_fetch_query": "SELECT a.ClientAuditId, cv.QC_Outcome, 80 AS ClientId, 606 AS FlowId FROM prod_Workflow_UHCUNet.dbo.Audit (NOLOCK) a JOIN prod_Workflow_UHCUNet.dbo.Customvalues606 cv (NOLOCK) ON a.id = cv.Audit_id WHERE cv.claimlineuid IS NULL AND cv.QC_Outcome IS NOT NULL",
+      "destination_fetch_query": "SELECT ClientAuditId, QC_Outcome FROM PI_EDWDDS.dbo.CustomvaluesQCTestBackup WITH (NOLOCK)",
+      "reference_keys": [
+        {
+          "name": "clientauditid",
+          "source_column": "ClientAuditId",
+          "destination_column": "ClientAuditId"
+        }
+      ],
+      "validation_pairs": [
+        [
+          "QC_Outcome",
+          "QC_Outcome"
+        ]
+      ],
+      "exclude_from_validation": [],
+      "normalization": {
+        "type": "text",
+        "trim": true,
+        "collapse_whitespace": true,
+        "case_insensitive": true
+      }
+    },
+    {
+      "client_id": "80",
+      "flow_id": "707",
+      "source_server": "ncsql46",
+      "source_database": "prod_Workflow_UHCUNet",
+      "destination_server": "ncsql42",
+      "destination_database": "PI_EDWDDS",
+      "source_table": "dbo.Customvalues707",
+      "destination_table": "dbo.CustomvaluesQCTestBackup",
+      "fetch_mode": "custom_query",
+      "source_fetch_query": "SELECT a.ClientAuditId, cv.QC_Outcome, 80 AS ClientId, 707 AS FlowId FROM prod_Workflow_UHCUNet.dbo.Audit (NOLOCK) a JOIN prod_Workflow_UHCUNet.dbo.Customvalues707 cv (NOLOCK) ON a.id = cv.Audit_id WHERE cv.claimlineuid IS NULL AND cv.QC_Outcome IS NOT NULL",
+      "destination_fetch_query": "SELECT ClientAuditId, QC_Outcome FROM PI_EDWDDS.dbo.CustomvaluesQCTestBackup WITH (NOLOCK)",
+      "reference_keys": [
+        {
+          "name": "clientauditid",
+          "source_column": "ClientAuditId",
+          "destination_column": "ClientAuditId"
+        }
+      ],
+      "validation_pairs": [
+        [
+          "QC_Outcome",
+          "QC_Outcome"
+        ]
+      ],
+      "exclude_from_validation": [],
+      "normalization": {
+        "type": "text",
+        "trim": true,
+        "collapse_whitespace": true,
+        "case_insensitive": true
+      }
+    },
+    {
+      "client_id": "105",
+      "flow_id": "1",
+      "source_server": "ncsql46",
+      "source_database": "prod_Workflow_UHCCirrus",
+      "destination_server": "ncsql42",
+      "destination_database": "PI_EDWDDS",
+      "source_table": "dbo.Customvalues1",
+      "destination_table": "dbo.CustomvaluesQCTestBackup",
+      "fetch_mode": "custom_query",
+      "source_fetch_query": "SELECT a.ClientAuditId, cv.QC_Outcome, 105 AS ClientId, 1 AS FlowId FROM prod_Workflow_UHCCirrus.dbo.Audit (NOLOCK) a JOIN prod_Workflow_UHCCirrus.dbo.Customvalues1 cv (NOLOCK) ON a.id = cv.Audit_id WHERE cv.claimlineuid IS NULL AND cv.QC_Outcome IS NOT NULL",
+      "destination_fetch_query": "SELECT ClientAuditId, QC_Outcome FROM PI_EDWDDS.dbo.CustomvaluesQCTestBackup WITH (NOLOCK)",
+      "reference_keys": [
+        {
+          "name": "clientauditid",
+          "source_column": "ClientAuditId",
+          "destination_column": "ClientAuditId"
+        }
+      ],
+      "validation_pairs": [
+        [
+          "QC_Outcome",
+          "QC_Outcome"
+        ]
+      ],
+      "exclude_from_validation": [],
+      "normalization": {
+        "type": "text",
+        "trim": true,
+        "collapse_whitespace": true,
+        "case_insensitive": true
+      }
+    },
+    {
+      "client_id": "105",
+      "flow_id": "202",
+      "source_server": "ncsql46",
+      "source_database": "prod_Workflow_UHCCirrus",
+      "destination_server": "ncsql42",
+      "destination_database": "PI_EDWDDS",
+      "source_table": "dbo.Customvalues202",
+      "destination_table": "dbo.CustomvaluesQCTestBackup",
+      "fetch_mode": "custom_query",
+      "source_fetch_query": "SELECT a.ClientAuditId, cv.QC_Outcome_00 AS QC_Outcome, 105 AS ClientId, 202 AS FlowId FROM prod_Workflow_UHCCirrus.dbo.Audit (NOLOCK) a JOIN prod_Workflow_UHCCirrus.dbo.Customvalues202 cv (NOLOCK) ON a.id = cv.Audit_id WHERE cv.claimlineuid IS NULL AND cv.QC_Outcome_00 IS NOT NULL",
+      "destination_fetch_query": "SELECT ClientAuditId, QC_Outcome FROM PI_EDWDDS.dbo.CustomvaluesQCTestBackup WITH (NOLOCK)",
+      "reference_keys": [
+        {
+          "name": "clientauditid",
+          "source_column": "ClientAuditId",
+          "destination_column": "ClientAuditId"
+        }
+      ],
+      "validation_pairs": [
+        [
+          "QC_Outcome",
+          "QC_Outcome"
+        ]
+      ],
+      "exclude_from_validation": [],
+      "normalization": {
+        "type": "text",
+        "trim": true,
+        "collapse_whitespace": true,
+        "case_insensitive": true
+      }
+    },
+    {
+      "client_id": "105",
+      "flow_id": "303",
+      "source_server": "ncsql46",
+      "source_database": "prod_Workflow_UHCCirrus",
+      "destination_server": "ncsql42",
+      "destination_database": "PI_EDWDDS",
+      "source_table": "dbo.Customvalues303",
+      "destination_table": "dbo.CustomvaluesQCTestBackup",
+      "fetch_mode": "custom_query",
+      "source_fetch_query": "SELECT a.ClientAuditId, cv.QC_Outcome, 105 AS ClientId, 303 AS FlowId FROM prod_Workflow_UHCCirrus.dbo.Audit (NOLOCK) a JOIN prod_Workflow_UHCCirrus.dbo.Customvalues303 cv (NOLOCK) ON a.id = cv.Audit_id WHERE cv.claimlineuid IS NULL AND cv.QC_Outcome IS NOT NULL",
+      "destination_fetch_query": "SELECT ClientAuditId, QC_Outcome FROM PI_EDWDDS.dbo.CustomvaluesQCTestBackup WITH (NOLOCK)",
+      "reference_keys": [
+        {
+          "name": "clientauditid",
+          "source_column": "ClientAuditId",
+          "destination_column": "ClientAuditId"
+        }
+      ],
+      "validation_pairs": [
+        [
+          "QC_Outcome",
+          "QC_Outcome"
+        ]
+      ],
+      "exclude_from_validation": [],
+      "normalization": {
+        "type": "text",
+        "trim": true,
+        "collapse_whitespace": true,
+        "case_insensitive": true
+      }
+    },
+    {
+      "client_id": "105",
+      "flow_id": "404",
+      "source_server": "ncsql46",
+      "source_database": "prod_Workflow_UHCCirrus",
+      "destination_server": "ncsql42",
+      "destination_database": "PI_EDWDDS",
+      "source_table": "dbo.Customvalues404",
+      "destination_table": "dbo.CustomvaluesQCTestBackup",
+      "fetch_mode": "custom_query",
+      "source_fetch_query": "SELECT a.ClientAuditId, cv.QC_Outcome, 105 AS ClientId, 404 AS FlowId FROM prod_Workflow_UHCCirrus.dbo.Audit (NOLOCK) a JOIN prod_Workflow_UHCCirrus.dbo.Customvalues404 cv (NOLOCK) ON a.id = cv.Audit_id WHERE cv.claimlineuid IS NULL AND cv.QC_Outcome IS NOT NULL",
+      "destination_fetch_query": "SELECT ClientAuditId, QC_Outcome FROM PI_EDWDDS.dbo.CustomvaluesQCTestBackup WITH (NOLOCK)",
+      "reference_keys": [
+        {
+          "name": "clientauditid",
+          "source_column": "ClientAuditId",
+          "destination_column": "ClientAuditId"
+        }
+      ],
+      "validation_pairs": [
+        [
+          "QC_Outcome",
+          "QC_Outcome"
+        ]
+      ],
+      "exclude_from_validation": [],
+      "normalization": {
+        "type": "text",
+        "trim": true,
+        "collapse_whitespace": true,
+        "case_insensitive": true
+      }
+    },
+    {
+      "client_id": "127",
+      "flow_id": "101",
+      "source_server": "ncsql46",
+      "source_database": "prod_Workflow_UHCCSPOffshore",
+      "destination_server": "ncsql42",
+      "destination_database": "PI_EDWDDS",
+      "source_table": "dbo.Customvalues101",
+      "destination_table": "dbo.CustomvaluesQCTestBackup",
+      "fetch_mode": "custom_query",
+      "source_fetch_query": "SELECT a.ClientAuditId, cv.QC_Outcome, 127 AS ClientId, 101 AS FlowId FROM prod_Workflow_UHCCSPOffshore.dbo.Audit (NOLOCK) a JOIN prod_Workflow_UHCCSPOffshore.dbo.Customvalues101 cv (NOLOCK) ON a.id = cv.Audit_id WHERE cv.claimlineuid IS NULL AND cv.QC_Outcome IS NOT NULL",
+      "destination_fetch_query": "SELECT ClientAuditId, QC_Outcome FROM PI_EDWDDS.dbo.CustomvaluesQCTestBackup WITH (NOLOCK)",
+      "reference_keys": [
+        {
+          "name": "clientauditid",
+          "source_column": "ClientAuditId",
+          "destination_column": "ClientAuditId"
+        }
+      ],
+      "validation_pairs": [
+        [
+          "QC_Outcome",
+          "QC_Outcome"
+        ]
+      ],
+      "exclude_from_validation": [],
+      "normalization": {
+        "type": "text",
+        "trim": true,
+        "collapse_whitespace": true,
+        "case_insensitive": true
+      }
+    },
+    {
+      "client_id": "127",
+      "flow_id": "202",
+      "source_server": "ncsql46",
+      "source_database": "prod_Workflow_UHCCSPOffshore",
+      "destination_server": "ncsql42",
+      "destination_database": "PI_EDWDDS",
+      "source_table": "dbo.Customvalues202",
+      "destination_table": "dbo.CustomvaluesQCTestBackup",
+      "fetch_mode": "custom_query",
+      "source_fetch_query": "SELECT a.ClientAuditId, cv.QC_Outcome, 127 AS ClientId, 202 AS FlowId FROM prod_Workflow_UHCCSPOffshore.dbo.Audit (NOLOCK) a JOIN prod_Workflow_UHCCSPOffshore.dbo.Customvalues202 cv (NOLOCK) ON a.id = cv.Audit_id WHERE cv.claimlineuid IS NULL AND cv.QC_Outcome IS NOT NULL",
+      "destination_fetch_query": "SELECT ClientAuditId, QC_Outcome FROM PI_EDWDDS.dbo.CustomvaluesQCTestBackup WITH (NOLOCK)",
+      "reference_keys": [
+        {
+          "name": "clientauditid",
+          "source_column": "ClientAuditId",
+          "destination_column": "ClientAuditId"
+        }
+      ],
+      "validation_pairs": [
+        [
+          "QC_Outcome",
+          "QC_Outcome"
+        ]
+      ],
+      "exclude_from_validation": [],
+      "normalization": {
+        "type": "text",
+        "trim": true,
+        "collapse_whitespace": true,
+        "case_insensitive": true
+      }
+    },
+    {
+      "client_id": "127",
+      "flow_id": "303",
+      "source_server": "ncsql46",
+      "source_database": "prod_Workflow_UHCCSPOffshore",
+      "destination_server": "ncsql42",
+      "destination_database": "PI_EDWDDS",
+      "source_table": "dbo.Customvalues303",
+      "destination_table": "dbo.CustomvaluesQCTestBackup",
+      "fetch_mode": "custom_query",
+      "source_fetch_query": "SELECT a.ClientAuditId, cv.QC_Outcome, 127 AS ClientId, 303 AS FlowId FROM prod_Workflow_UHCCSPOffshore.dbo.Audit (NOLOCK) a JOIN prod_Workflow_UHCCSPOffshore.dbo.Customvalues303 cv (NOLOCK) ON a.id = cv.Audit_id WHERE cv.claimlineuid IS NULL AND cv.QC_Outcome IS NOT NULL",
+      "destination_fetch_query": "SELECT ClientAuditId, QC_Outcome FROM PI_EDWDDS.dbo.CustomvaluesQCTestBackup WITH (NOLOCK)",
+      "reference_keys": [
+        {
+          "name": "clientauditid",
+          "source_column": "ClientAuditId",
+          "destination_column": "ClientAuditId"
+        }
+      ],
+      "validation_pairs": [
+        [
+          "QC_Outcome",
+          "QC_Outcome"
+        ]
+      ],
+      "exclude_from_validation": [],
+      "normalization": {
+        "type": "text",
+        "trim": true,
+        "collapse_whitespace": true,
+        "case_insensitive": true
+      }
+    },
+    {
+      "client_id": "134",
+      "flow_id": "1",
+      "source_server": "ncsql46",
+      "source_database": "prod_Workflow_Point32Health",
+      "destination_server": "ncsql42",
+      "destination_database": "PI_EDWDDS",
+      "source_table": "dbo.Customvalues1",
+      "destination_table": "dbo.CustomvaluesQCTestBackup",
+      "fetch_mode": "custom_query",
+      "source_fetch_query": "SELECT a.ClientAuditId, cv.QC_Outcome, 134 AS ClientId, 1 AS FlowId FROM prod_Workflow_Point32Health.dbo.Audit (NOLOCK) a JOIN prod_Workflow_Point32Health.dbo.Customvalues1 cv (NOLOCK) ON a.id = cv.Audit_id WHERE cv.claimlineuid IS NULL AND cv.QC_Outcome IS NOT NULL",
+      "destination_fetch_query": "SELECT ClientAuditId, QC_Outcome FROM PI_EDWDDS.dbo.CustomvaluesQCTestBackup WITH (NOLOCK)",
+      "reference_keys": [
+        {
+          "name": "clientauditid",
+          "source_column": "ClientAuditId",
+          "destination_column": "ClientAuditId"
+        }
+      ],
+      "validation_pairs": [
+        [
+          "QC_Outcome",
+          "QC_Outcome"
+        ]
+      ],
+      "exclude_from_validation": [],
+      "normalization": {
+        "type": "text",
+        "trim": true,
+        "collapse_whitespace": true,
+        "case_insensitive": true
+      }
+    },
+    {
+      "client_id": "134",
+      "flow_id": "101",
+      "source_server": "ncsql46",
+      "source_database": "prod_Workflow_Point32Health",
+      "destination_server": "ncsql42",
+      "destination_database": "PI_EDWDDS",
+      "source_table": "dbo.Customvalues101",
+      "destination_table": "dbo.CustomvaluesQCTestBackup",
+      "fetch_mode": "custom_query",
+      "source_fetch_query": "SELECT a.ClientAuditId, cv.QC_Outcome, 134 AS ClientId, 101 AS FlowId FROM prod_Workflow_Point32Health.dbo.Audit (NOLOCK) a JOIN prod_Workflow_Point32Health.dbo.Customvalues101 cv (NOLOCK) ON a.id = cv.Audit_id WHERE cv.claimlineuid IS NULL AND cv.QC_Outcome IS NOT NULL",
+      "destination_fetch_query": "SELECT ClientAuditId, QC_Outcome FROM PI_EDWDDS.dbo.CustomvaluesQCTestBackup WITH (NOLOCK)",
+      "reference_keys": [
+        {
+          "name": "clientauditid",
+          "source_column": "ClientAuditId",
+          "destination_column": "ClientAuditId"
+        }
+      ],
+      "validation_pairs": [
+        [
+          "QC_Outcome",
+          "QC_Outcome"
+        ]
+      ],
+      "exclude_from_validation": [],
+      "normalization": {
+        "type": "text",
+        "trim": true,
+        "collapse_whitespace": true,
+        "case_insensitive": true
+      }
+    },
+    {
+      "client_id": "134",
+      "flow_id": "202",
+      "source_server": "ncsql46",
+      "source_database": "prod_Workflow_Point32Health",
+      "destination_server": "ncsql42",
+      "destination_database": "PI_EDWDDS",
+      "source_table": "dbo.Customvalues202",
+      "destination_table": "dbo.CustomvaluesQCTestBackup",
+      "fetch_mode": "custom_query",
+      "source_fetch_query": "SELECT a.ClientAuditId, cv.QC_Outcome, 134 AS ClientId, 202 AS FlowId FROM prod_Workflow_Point32Health.dbo.Audit (NOLOCK) a JOIN prod_Workflow_Point32Health.dbo.Customvalues202 cv (NOLOCK) ON a.id = cv.Audit_id WHERE cv.claimlineuid IS NULL AND cv.QC_Outcome IS NOT NULL",
+      "destination_fetch_query": "SELECT ClientAuditId, QC_Outcome FROM PI_EDWDDS.dbo.CustomvaluesQCTestBackup WITH (NOLOCK)",
+      "reference_keys": [
+        {
+          "name": "clientauditid",
+          "source_column": "ClientAuditId",
+          "destination_column": "ClientAuditId"
+        }
+      ],
+      "validation_pairs": [
+        [
+          "QC_Outcome",
+          "QC_Outcome"
+        ]
+      ],
+      "exclude_from_validation": [],
+      "normalization": {
+        "type": "text",
+        "trim": true,
+        "collapse_whitespace": true,
+        "case_insensitive": true
+      }
+    },
+    {
+      "client_id": "78",
+      "flow_id": "202",
+      "source_server": "ncsql46",
+      "source_database": "prod_Workflow_OptumRxPrepay",
+      "destination_server": "ncsql42",
+      "destination_database": "PI_EDWDDS",
+      "source_table": "dbo.Customvalues202",
+      "destination_table": "dbo.CustomvaluesQCTestBackup",
+      "fetch_mode": "custom_query",
+      "source_fetch_query": "SELECT a.ClientAuditId, cv.QC_Outcome, 78 AS ClientId, 202 AS FlowId FROM prod_Workflow_OptumRxPrepay.dbo.Audit (NOLOCK) a JOIN prod_Workflow_OptumRxPrepay.dbo.Customvalues202 cv (NOLOCK) ON a.id = cv.Audit_id WHERE cv.claimlineuid IS NULL AND cv.QC_Outcome IS NOT NULL",
+      "destination_fetch_query": "SELECT ClientAuditId, QC_Outcome FROM PI_EDWDDS.dbo.CustomvaluesQCTestBackup WITH (NOLOCK)",
+      "reference_keys": [
+        {
+          "name": "clientauditid",
+          "source_column": "ClientAuditId",
+          "destination_column": "ClientAuditId"
+        }
+      ],
+      "validation_pairs": [
+        [
+          "QC_Outcome",
+          "QC_Outcome"
+        ]
+      ],
+      "exclude_from_validation": [],
+      "normalization": {
+        "type": "text",
+        "trim": true,
+        "collapse_whitespace": true,
+        "case_insensitive": true
+      }
+    },
+    {
+      "client_id": "117",
+      "flow_id": "1",
+      "source_server": "ncsql46",
+      "source_database": "prod_Workflow_OptumCare",
+      "destination_server": "ncsql42",
+      "destination_database": "PI_EDWDDS",
+      "source_table": "dbo.Customvalues1",
+      "destination_table": "dbo.CustomvaluesQCTestBackup",
+      "fetch_mode": "custom_query",
+      "source_fetch_query": "SELECT a.ClientAuditId, cv.QC_Outcome, 117 AS ClientId, 1 AS FlowId FROM prod_Workflow_OptumCare.dbo.Audit (NOLOCK) a JOIN prod_Workflow_OptumCare.dbo.Customvalues1 cv (NOLOCK) ON a.id = cv.Audit_id WHERE cv.claimlineuid IS NULL AND cv.QC_Outcome IS NOT NULL",
+      "destination_fetch_query": "SELECT ClientAuditId, QC_Outcome FROM PI_EDWDDS.dbo.CustomvaluesQCTestBackup WITH (NOLOCK)",
+      "reference_keys": [
+        {
+          "name": "clientauditid",
+          "source_column": "ClientAuditId",
+          "destination_column": "ClientAuditId"
+        }
+      ],
+      "validation_pairs": [
+        [
+          "QC_Outcome",
+          "QC_Outcome"
+        ]
+      ],
+      "exclude_from_validation": [],
+      "normalization": {
+        "type": "text",
+        "trim": true,
+        "collapse_whitespace": true,
+        "case_insensitive": true
+      }
+    },
+    {
+      "client_id": "33",
+      "flow_id": "202",
+      "source_server": "ncsql46",
+      "source_database": "prod_Workflow_EssenceHealth",
+      "destination_server": "ncsql42",
+      "destination_database": "PI_EDWDDS",
+      "source_table": "dbo.Customvalues202",
+      "destination_table": "dbo.CustomvaluesQCTestBackup",
+      "fetch_mode": "custom_query",
+      "source_fetch_query": "SELECT a.ClientAuditId, cv.QC_Outcome, 33 AS ClientId, 202 AS FlowId FROM prod_Workflow_EssenceHealth.dbo.Audit (NOLOCK) a JOIN prod_Workflow_EssenceHealth.dbo.Customvalues202 cv (NOLOCK) ON a.id = cv.Audit_id WHERE cv.claimlineuid IS NULL AND cv.QC_Outcome IS NOT NULL",
+      "destination_fetch_query": "SELECT ClientAuditId, QC_Outcome FROM PI_EDWDDS.dbo.CustomvaluesQCTestBackup WITH (NOLOCK)",
+      "reference_keys": [
+        {
+          "name": "clientauditid",
+          "source_column": "ClientAuditId",
+          "destination_column": "ClientAuditId"
+        }
+      ],
+      "validation_pairs": [
+        [
+          "QC_Outcome",
+          "QC_Outcome"
+        ]
+      ],
+      "exclude_from_validation": [],
+      "normalization": {
+        "type": "text",
+        "trim": true,
+        "collapse_whitespace": true,
+        "case_insensitive": true
+      }
+    },
+    {
+      "client_id": "33",
+      "flow_id": "303",
+      "source_server": "ncsql46",
+      "source_database": "prod_Workflow_EssenceHealth",
+      "destination_server": "ncsql42",
+      "destination_database": "PI_EDWDDS",
+      "source_table": "dbo.Customvalues303",
+      "destination_table": "dbo.CustomvaluesQCTestBackup",
+      "fetch_mode": "custom_query",
+      "source_fetch_query": "SELECT a.ClientAuditId, cv.QC_Outcome, 33 AS ClientId, 303 AS FlowId FROM prod_Workflow_EssenceHealth.dbo.Audit (NOLOCK) a JOIN prod_Workflow_EssenceHealth.dbo.Customvalues303 cv (NOLOCK) ON a.id = cv.Audit_id WHERE cv.claimlineuid IS NULL AND cv.QC_Outcome IS NOT NULL",
+      "destination_fetch_query": "SELECT ClientAuditId, QC_Outcome FROM PI_EDWDDS.dbo.CustomvaluesQCTestBackup WITH (NOLOCK)",
+      "reference_keys": [
+        {
+          "name": "clientauditid",
+          "source_column": "ClientAuditId",
+          "destination_column": "ClientAuditId"
+        }
+      ],
+      "validation_pairs": [
+        [
+          "QC_Outcome",
+          "QC_Outcome"
+        ]
+      ],
+      "exclude_from_validation": [],
+      "normalization": {
+        "type": "text",
+        "trim": true,
+        "collapse_whitespace": true,
+        "case_insensitive": true
+      }
+    },
+    {
+      "client_id": "33",
+      "flow_id": "404",
+      "source_server": "ncsql46",
+      "source_database": "prod_Workflow_EssenceHealth",
+      "destination_server": "ncsql42",
+      "destination_database": "PI_EDWDDS",
+      "source_table": "dbo.Customvalues404",
+      "destination_table": "dbo.CustomvaluesQCTestBackup",
+      "fetch_mode": "custom_query",
+      "source_fetch_query": "SELECT a.ClientAuditId, cv.QC_Outcome, 33 AS ClientId, 404 AS FlowId FROM prod_Workflow_EssenceHealth.dbo.Audit (NOLOCK) a JOIN prod_Workflow_EssenceHealth.dbo.Customvalues404 cv (NOLOCK) ON a.id = cv.Audit_id WHERE cv.claimlineuid IS NULL AND cv.QC_Outcome IS NOT NULL",
+      "destination_fetch_query": "SELECT ClientAuditId, QC_Outcome FROM PI_EDWDDS.dbo.CustomvaluesQCTestBackup WITH (NOLOCK)",
+      "reference_keys": [
+        {
+          "name": "clientauditid",
+          "source_column": "ClientAuditId",
+          "destination_column": "ClientAuditId"
+        }
+      ],
+      "validation_pairs": [
+        [
+          "QC_Outcome",
+          "QC_Outcome"
+        ]
+      ],
+      "exclude_from_validation": [],
+      "normalization": {
+        "type": "text",
+        "trim": true,
+        "collapse_whitespace": true,
+        "case_insensitive": true
+      }
+    },
+    {
+      "client_id": "33",
+      "flow_id": "505",
+      "source_server": "ncsql46",
+      "source_database": "prod_Workflow_EssenceHealth",
+      "destination_server": "ncsql42",
+      "destination_database": "PI_EDWDDS",
+      "source_table": "dbo.Customvalues505",
+      "destination_table": "dbo.CustomvaluesQCTestBackup",
+      "fetch_mode": "custom_query",
+      "source_fetch_query": "SELECT a.ClientAuditId, cv.QC_Outcome, 33 AS ClientId, 505 AS FlowId FROM prod_Workflow_EssenceHealth.dbo.Audit (NOLOCK) a JOIN prod_Workflow_EssenceHealth.dbo.Customvalues505 cv (NOLOCK) ON a.id = cv.Audit_id WHERE cv.claimlineuid IS NULL AND cv.QC_Outcome IS NOT NULL",
+      "destination_fetch_query": "SELECT ClientAuditId, QC_Outcome FROM PI_EDWDDS.dbo.CustomvaluesQCTestBackup WITH (NOLOCK)",
+      "reference_keys": [
+        {
+          "name": "clientauditid",
+          "source_column": "ClientAuditId",
+          "destination_column": "ClientAuditId"
+        }
+      ],
+      "validation_pairs": [
+        [
+          "QC_Outcome",
+          "QC_Outcome"
+        ]
+      ],
+      "exclude_from_validation": [],
+      "normalization": {
+        "type": "text",
+        "trim": true,
+        "collapse_whitespace": true,
+        "case_insensitive": true
+      }
+    },
+    {
+      "client_id": "33",
+      "flow_id": "606",
+      "source_server": "ncsql46",
+      "source_database": "prod_Workflow_EssenceHealth",
+      "destination_server": "ncsql42",
+      "destination_database": "PI_EDWDDS",
+      "source_table": "dbo.Customvalues606",
+      "destination_table": "dbo.CustomvaluesQCTestBackup",
+      "fetch_mode": "custom_query",
+      "source_fetch_query": "SELECT a.ClientAuditId, cv.QC_Outcome, 33 AS ClientId, 606 AS FlowId FROM prod_Workflow_EssenceHealth.dbo.Audit (NOLOCK) a JOIN prod_Workflow_EssenceHealth.dbo.Customvalues606 cv (NOLOCK) ON a.id = cv.Audit_id WHERE cv.claimlineuid IS NULL AND cv.QC_Outcome IS NOT NULL",
+      "destination_fetch_query": "SELECT ClientAuditId, QC_Outcome FROM PI_EDWDDS.dbo.CustomvaluesQCTestBackup WITH (NOLOCK)",
+      "reference_keys": [
+        {
+          "name": "clientauditid",
+          "source_column": "ClientAuditId",
+          "destination_column": "ClientAuditId"
+        }
+      ],
+      "validation_pairs": [
+        [
+          "QC_Outcome",
+          "QC_Outcome"
+        ]
+      ],
+      "exclude_from_validation": [],
+      "normalization": {
+        "type": "text",
+        "trim": true,
+        "collapse_whitespace": true,
+        "case_insensitive": true
+      }
+    },
+    {
+      "client_id": "108",
+      "flow_id": "1",
+      "source_server": "ncsql46",
+      "source_database": "prod_Workflow_HumanaProfessionalPrepay",
+      "destination_server": "ncsql42",
+      "destination_database": "PI_EDWDDS",
+      "source_table": "dbo.Customvalues1",
+      "destination_table": "dbo.CustomvaluesQCTestBackup",
+      "fetch_mode": "custom_query",
+      "source_fetch_query": "SELECT a.ClientAuditId, cv.QC_Outcome, 108 AS ClientId, 1 AS FlowId FROM prod_Workflow_HumanaProfessionalPrepay.dbo.Audit (NOLOCK) a JOIN prod_Workflow_HumanaProfessionalPrepay.dbo.Customvalues1 cv (NOLOCK) ON a.id = cv.Audit_id WHERE cv.claimlineuid IS NULL AND cv.QC_Outcome IS NOT NULL",
+      "destination_fetch_query": "SELECT ClientAuditId, QC_Outcome FROM PI_EDWDDS.dbo.CustomvaluesQCTestBackup WITH (NOLOCK)",
+      "reference_keys": [
+        {
+          "name": "clientauditid",
+          "source_column": "ClientAuditId",
+          "destination_column": "ClientAuditId"
+        }
+      ],
+      "validation_pairs": [
+        [
+          "QC_Outcome",
+          "QC_Outcome"
+        ]
+      ],
+      "exclude_from_validation": [],
+      "normalization": {
+        "type": "text",
+        "trim": true,
+        "collapse_whitespace": true,
+        "case_insensitive": true
+      }
+    },
+    {
+      "client_id": "98",
+      "flow_id": "1",
+      "source_server": "ncsql46",
+      "source_database": "prod_Workflow_HumanaPrepaySNF",
+      "destination_server": "ncsql42",
+      "destination_database": "PI_EDWDDS",
+      "source_table": "dbo.Customvalues1",
+      "destination_table": "dbo.CustomvaluesQCTestBackup",
+      "fetch_mode": "custom_query",
+      "source_fetch_query": "SELECT a.ClientAuditId, cv.QC_Outcome, 98 AS ClientId, 1 AS FlowId FROM prod_Workflow_HumanaPrepaySNF.dbo.Audit (NOLOCK) a JOIN prod_Workflow_HumanaPrepaySNF.dbo.Customvalues1 cv (NOLOCK) ON a.id = cv.Audit_id WHERE cv.claimlineuid IS NULL AND cv.QC_Outcome IS NOT NULL",
+      "destination_fetch_query": "SELECT ClientAuditId, QC_Outcome FROM PI_EDWDDS.dbo.CustomvaluesQCTestBackup WITH (NOLOCK)",
+      "reference_keys": [
+        {
+          "name": "clientauditid",
+          "source_column": "ClientAuditId",
+          "destination_column": "ClientAuditId"
+        }
+      ],
+      "validation_pairs": [
+        [
+          "QC_Outcome",
+          "QC_Outcome"
+        ]
+      ],
+      "exclude_from_validation": [],
+      "normalization": {
+        "type": "text",
+        "trim": true,
+        "collapse_whitespace": true,
+        "case_insensitive": true
+      }
+    },
+    {
+      "client_id": "84",
+      "flow_id": "1",
+      "source_server": "ncsql46",
+      "source_database": "prod_Workflow_HumanaPrepayHCD",
+      "destination_server": "ncsql42",
+      "destination_database": "PI_EDWDDS",
+      "source_table": "dbo.Customvalues1",
+      "destination_table": "dbo.CustomvaluesQCTestBackup",
+      "fetch_mode": "custom_query",
+      "source_fetch_query": "SELECT a.ClientAuditId, cv.QC_Outcome, 84 AS ClientId, 1 AS FlowId FROM prod_Workflow_HumanaPrepayHCD.dbo.Audit (NOLOCK) a JOIN prod_Workflow_HumanaPrepayHCD.dbo.Customvalues1 cv (NOLOCK) ON a.id = cv.Audit_id WHERE cv.claimlineuid IS NULL AND cv.QC_Outcome IS NOT NULL",
+      "destination_fetch_query": "SELECT ClientAuditId, QC_Outcome FROM PI_EDWDDS.dbo.CustomvaluesQCTestBackup WITH (NOLOCK)",
+      "reference_keys": [
+        {
+          "name": "clientauditid",
+          "source_column": "ClientAuditId",
+          "destination_column": "ClientAuditId"
+        }
+      ],
+      "validation_pairs": [
+        [
+          "QC_Outcome",
+          "QC_Outcome"
+        ]
+      ],
+      "exclude_from_validation": [],
+      "normalization": {
+        "type": "text",
+        "trim": true,
+        "collapse_whitespace": true,
+        "case_insensitive": true
+      }
+    },
+    {
+      "client_id": "103",
+      "flow_id": "1",
+      "source_server": "ncsql46",
+      "source_database": "prod_Workflow_HumanaPrepayImplants",
+      "destination_server": "ncsql42",
+      "destination_database": "PI_EDWDDS",
+      "source_table": "dbo.Customvalues1",
+      "destination_table": "dbo.CustomvaluesQCTestBackup",
+      "fetch_mode": "custom_query",
+      "source_fetch_query": "SELECT a.ClientAuditId, cv.QC_Outcome, 103 AS ClientId, 1 AS FlowId FROM prod_Workflow_HumanaPrepayImplants.dbo.Audit (NOLOCK) a JOIN prod_Workflow_HumanaPrepayImplants.dbo.Customvalues1 cv (NOLOCK) ON a.id = cv.Audit_id WHERE cv.claimlineuid IS NULL AND cv.QC_Outcome IS NOT NULL",
+      "destination_fetch_query": "SELECT ClientAuditId, QC_Outcome FROM PI_EDWDDS.dbo.CustomvaluesQCTestBackup WITH (NOLOCK)",
+      "reference_keys": [
+        {
+          "name": "clientauditid",
+          "source_column": "ClientAuditId",
+          "destination_column": "ClientAuditId"
+        }
+      ],
+      "validation_pairs": [
+        [
+          "QC_Outcome",
+          "QC_Outcome"
+        ]
+      ],
+      "exclude_from_validation": [],
+      "normalization": {
+        "type": "text",
+        "trim": true,
+        "collapse_whitespace": true,
+        "case_insensitive": true
+      }
+    },
+    {
+      "client_id": "87",
+      "flow_id": "1",
+      "source_server": "ncsql46",
+      "source_database": "prod_Workflow_HumanaPrepayDRGSS",
+      "destination_server": "ncsql42",
+      "destination_database": "PI_EDWDDS",
+      "source_table": "dbo.Customvalues1",
+      "destination_table": "dbo.CustomvaluesQCTestBackup",
+      "fetch_mode": "custom_query",
+      "source_fetch_query": "SELECT a.ClientAuditId, cv.QC_Outcome, 87 AS ClientId, 1 AS FlowId FROM prod_Workflow_HumanaPrepayDRGSS.dbo.Audit (NOLOCK) a JOIN prod_Workflow_HumanaPrepayDRGSS.dbo.Customvalues1 cv (NOLOCK) ON a.id = cv.Audit_id WHERE cv.claimlineuid IS NULL AND cv.QC_Outcome IS NOT NULL",
+      "destination_fetch_query": "SELECT ClientAuditId, QC_Outcome FROM PI_EDWDDS.dbo.CustomvaluesQCTestBackup WITH (NOLOCK)",
+      "reference_keys": [
+        {
+          "name": "clientauditid",
+          "source_column": "ClientAuditId",
+          "destination_column": "ClientAuditId"
+        }
+      ],
+      "validation_pairs": [
+        [
+          "QC_Outcome",
+          "QC_Outcome"
+        ]
+      ],
+      "exclude_from_validation": [],
+      "normalization": {
+        "type": "text",
+        "trim": true,
+        "collapse_whitespace": true,
+        "case_insensitive": true
+      }
+    },
+    {
+      "client_id": "89",
+      "flow_id": "1",
+      "source_server": "ncsql46",
+      "source_database": "prod_Workflow_HumanaPrepayDME",
+      "destination_server": "ncsql42",
+      "destination_database": "PI_EDWDDS",
+      "source_table": "dbo.Customvalues1",
+      "destination_table": "dbo.CustomvaluesQCTestBackup",
+      "fetch_mode": "custom_query",
+      "source_fetch_query": "SELECT a.ClientAuditId, cv.QC_Outcome, 89 AS ClientId, 1 AS FlowId FROM prod_Workflow_HumanaPrepayDME.dbo.Audit (NOLOCK) a JOIN prod_Workflow_HumanaPrepayDME.dbo.Customvalues1 cv (NOLOCK) ON a.id = cv.Audit_id WHERE cv.claimlineuid IS NULL AND cv.QC_Outcome IS NOT NULL",
+      "destination_fetch_query": "SELECT ClientAuditId, QC_Outcome FROM PI_EDWDDS.dbo.CustomvaluesQCTestBackup WITH (NOLOCK)",
+      "reference_keys": [
+        {
+          "name": "clientauditid",
+          "source_column": "ClientAuditId",
+          "destination_column": "ClientAuditId"
+        }
+      ],
+      "validation_pairs": [
+        [
+          "QC_Outcome",
+          "QC_Outcome"
+        ]
+      ],
+      "exclude_from_validation": [],
+      "normalization": {
+        "type": "text",
+        "trim": true,
+        "collapse_whitespace": true,
+        "case_insensitive": true
+      }
+    },
+    {
+      "client_id": "86",
+      "flow_id": "1",
+      "source_server": "ncsql46",
+      "source_database": "prod_Workflow_HumanaPrepayCVIR",
+      "destination_server": "ncsql42",
+      "destination_database": "PI_EDWDDS",
+      "source_table": "dbo.Customvalues1",
+      "destination_table": "dbo.CustomvaluesQCTestBackup",
+      "fetch_mode": "custom_query",
+      "source_fetch_query": "SELECT a.ClientAuditId, cv.QC_Outcome, 86 AS ClientId, 1 AS FlowId FROM prod_Workflow_HumanaPrepayCVIR.dbo.Audit (NOLOCK) a JOIN prod_Workflow_HumanaPrepayCVIR.dbo.Customvalues1 cv (NOLOCK) ON a.id = cv.Audit_id WHERE cv.claimlineuid IS NULL AND cv.QC_Outcome IS NOT NULL",
+      "destination_fetch_query": "SELECT ClientAuditId, QC_Outcome FROM PI_EDWDDS.dbo.CustomvaluesQCTestBackup WITH (NOLOCK)",
+      "reference_keys": [
+        {
+          "name": "clientauditid",
+          "source_column": "ClientAuditId",
+          "destination_column": "ClientAuditId"
+        }
+      ],
+      "validation_pairs": [
+        [
+          "QC_Outcome",
+          "QC_Outcome"
+        ]
+      ],
+      "exclude_from_validation": [],
+      "normalization": {
+        "type": "text",
+        "trim": true,
+        "collapse_whitespace": true,
+        "case_insensitive": true
+      }
+    },
+    {
+      "client_id": "102",
+      "flow_id": "1",
+      "source_server": "ncsql46",
+      "source_database": "prod_Workflow_HumanaPrepayAPC",
+      "destination_server": "ncsql42",
+      "destination_database": "PI_EDWDDS",
+      "source_table": "dbo.Customvalues1",
+      "destination_table": "dbo.CustomvaluesQCTestBackup",
+      "fetch_mode": "custom_query",
+      "source_fetch_query": "SELECT a.ClientAuditId, cv.QC_Outcome, 102 AS ClientId, 1 AS FlowId FROM prod_Workflow_HumanaPrepayAPC.dbo.Audit (NOLOCK) a JOIN prod_Workflow_HumanaPrepayAPC.dbo.Customvalues1 cv (NOLOCK) ON a.id = cv.Audit_id WHERE cv.claimlineuid IS NULL AND cv.QC_Outcome IS NOT NULL",
+      "destination_fetch_query": "SELECT ClientAuditId, QC_Outcome FROM PI_EDWDDS.dbo.CustomvaluesQCTestBackup WITH (NOLOCK)",
+      "reference_keys": [
+        {
+          "name": "clientauditid",
+          "source_column": "ClientAuditId",
+          "destination_column": "ClientAuditId"
+        }
+      ],
+      "validation_pairs": [
+        [
+          "QC_Outcome",
+          "QC_Outcome"
+        ]
+      ],
+      "exclude_from_validation": [],
+      "normalization": {
+        "type": "text",
+        "trim": true,
+        "collapse_whitespace": true,
+        "case_insensitive": true
+      }
+    },
+    {
+      "client_id": "77",
+      "flow_id": "101",
+      "source_server": "ncsql46",
+      "source_database": "prod_Workflow_HumanaPrePay",
+      "destination_server": "ncsql42",
+      "destination_database": "PI_EDWDDS",
+      "source_table": "dbo.Customvalues101",
+      "destination_table": "dbo.CustomvaluesQCTestBackup",
+      "fetch_mode": "custom_query",
+      "source_fetch_query": "SELECT a.ClientAuditId, cv.QC_Outcome, 77 AS ClientId, 101 AS FlowId FROM prod_Workflow_HumanaPrePay.dbo.Audit (NOLOCK) a JOIN prod_Workflow_HumanaPrePay.dbo.Customvalues101 cv (NOLOCK) ON a.id = cv.Audit_id WHERE cv.claimlineuid IS NULL AND cv.QC_Outcome IS NOT NULL",
+      "destination_fetch_query": "SELECT ClientAuditId, QC_Outcome FROM PI_EDWDDS.dbo.CustomvaluesQCTestBackup WITH (NOLOCK)",
+      "reference_keys": [
+        {
+          "name": "clientauditid",
+          "source_column": "ClientAuditId",
+          "destination_column": "ClientAuditId"
+        }
+      ],
+      "validation_pairs": [
+        [
+          "QC_Outcome",
+          "QC_Outcome"
+        ]
+      ],
+      "exclude_from_validation": [],
+      "normalization": {
+        "type": "text",
+        "trim": true,
+        "collapse_whitespace": true,
+        "case_insensitive": true
+      }
+    },
+    {
+      "client_id": "77",
+      "flow_id": "1",
+      "source_server": "ncsql46",
+      "source_database": "prod_Workflow_HumanaPrePay",
+      "destination_server": "ncsql42",
+      "destination_database": "PI_EDWDDS",
+      "source_table": "dbo.Customvalues1",
+      "destination_table": "dbo.CustomvaluesQCTestBackup",
+      "fetch_mode": "custom_query",
+      "source_fetch_query": "SELECT a.ClientAuditId, cv.QC_Outcome, 77 AS ClientId, 1 AS FlowId FROM prod_Workflow_HumanaPrePay.dbo.Audit (NOLOCK) a JOIN prod_Workflow_HumanaPrePay.dbo.Customvalues1 cv (NOLOCK) ON a.id = cv.Audit_id WHERE cv.claimlineuid IS NULL AND cv.QC_Outcome IS NOT NULL",
+      "destination_fetch_query": "SELECT ClientAuditId, QC_Outcome FROM PI_EDWDDS.dbo.CustomvaluesQCTestBackup WITH (NOLOCK)",
+      "reference_keys": [
+        {
+          "name": "clientauditid",
+          "source_column": "ClientAuditId",
+          "destination_column": "ClientAuditId"
+        }
+      ],
+      "validation_pairs": [
+        [
+          "QC_Outcome",
+          "QC_Outcome"
+        ]
+      ],
+      "exclude_from_validation": [],
+      "normalization": {
+        "type": "text",
+        "trim": true,
+        "collapse_whitespace": true,
+        "case_insensitive": true
+      }
+    },
+    {
+      "client_id": "37",
+      "flow_id": "202",
+      "source_server": "ncsql46",
+      "source_database": "prod_Workflow_HumanaAssignment",
+      "destination_server": "ncsql42",
+      "destination_database": "PI_EDWDDS",
+      "source_table": "dbo.Customvalues202",
+      "destination_table": "dbo.CustomvaluesQCTestBackup",
+      "fetch_mode": "custom_query",
+      "source_fetch_query": "SELECT a.ClientAuditId, cv.QC_Outcome, 37 AS ClientId, 202 AS FlowId FROM prod_Workflow_HumanaAssignment.dbo.Audit (NOLOCK) a JOIN prod_Workflow_HumanaAssignment.dbo.Customvalues202 cv (NOLOCK) ON a.id = cv.Audit_id WHERE cv.claimlineuid IS NULL AND cv.QC_Outcome IS NOT NULL",
+      "destination_fetch_query": "SELECT ClientAuditId, QC_Outcome FROM PI_EDWDDS.dbo.CustomvaluesQCTestBackup WITH (NOLOCK)",
+      "reference_keys": [
+        {
+          "name": "clientauditid",
+          "source_column": "ClientAuditId",
+          "destination_column": "ClientAuditId"
+        }
+      ],
+      "validation_pairs": [
+        [
+          "QC_Outcome",
+          "QC_Outcome"
+        ]
+      ],
+      "exclude_from_validation": [],
+      "normalization": {
+        "type": "text",
+        "trim": true,
+        "collapse_whitespace": true,
+        "case_insensitive": true
+      }
+    },
+    {
+      "client_id": "1",
+      "flow_id": "101",
+      "source_server": "ncsql46",
+      "source_database": "prod_Workflow_Humana",
+      "destination_server": "ncsql42",
+      "destination_database": "PI_EDWDDS",
+      "source_table": "dbo.Customvalues101",
+      "destination_table": "dbo.CustomvaluesQCTestBackup",
+      "fetch_mode": "custom_query",
+      "source_fetch_query": "SELECT a.ClientAuditId, cv.QC_Outcome, 1 AS ClientId, 101 AS FlowId FROM prod_Workflow_Humana.dbo.Audit (NOLOCK) a JOIN prod_Workflow_Humana.dbo.Customvalues101 cv (NOLOCK) ON a.id = cv.Audit_id WHERE cv.claimlineuid IS NULL AND cv.QC_Outcome IS NOT NULL",
+      "destination_fetch_query": "SELECT ClientAuditId, QC_Outcome FROM PI_EDWDDS.dbo.CustomvaluesQCTestBackup WITH (NOLOCK)",
+      "reference_keys": [
+        {
+          "name": "clientauditid",
+          "source_column": "ClientAuditId",
+          "destination_column": "ClientAuditId"
+        }
+      ],
+      "validation_pairs": [
+        [
+          "QC_Outcome",
+          "QC_Outcome"
+        ]
+      ],
+      "exclude_from_validation": [],
+      "normalization": {
+        "type": "text",
+        "trim": true,
+        "collapse_whitespace": true,
+        "case_insensitive": true
+      }
+    },
+    {
+      "client_id": "1",
+      "flow_id": "202",
+      "source_server": "ncsql46",
+      "source_database": "prod_Workflow_Humana",
+      "destination_server": "ncsql42",
+      "destination_database": "PI_EDWDDS",
+      "source_table": "dbo.Customvalues202",
+      "destination_table": "dbo.CustomvaluesQCTestBackup",
+      "fetch_mode": "custom_query",
+      "source_fetch_query": "SELECT a.ClientAuditId, cv.QC_Outcome, 1 AS ClientId, 202 AS FlowId FROM prod_Workflow_Humana.dbo.Audit (NOLOCK) a JOIN prod_Workflow_Humana.dbo.Customvalues202 cv (NOLOCK) ON a.id = cv.Audit_id WHERE cv.claimlineuid IS NULL AND cv.QC_Outcome IS NOT NULL",
+      "destination_fetch_query": "SELECT ClientAuditId, QC_Outcome FROM PI_EDWDDS.dbo.CustomvaluesQCTestBackup WITH (NOLOCK)",
+      "reference_keys": [
+        {
+          "name": "clientauditid",
+          "source_column": "ClientAuditId",
+          "destination_column": "ClientAuditId"
+        }
+      ],
+      "validation_pairs": [
+        [
+          "QC_Outcome",
+          "QC_Outcome"
+        ]
+      ],
+      "exclude_from_validation": [],
+      "normalization": {
+        "type": "text",
+        "trim": true,
+        "collapse_whitespace": true,
+        "case_insensitive": true
+      }
+    },
+    {
+      "client_id": "1",
+      "flow_id": "404",
+      "source_server": "ncsql46",
+      "source_database": "prod_Workflow_Humana",
+      "destination_server": "ncsql42",
+      "destination_database": "PI_EDWDDS",
+      "source_table": "dbo.Customvalues404",
+      "destination_table": "dbo.CustomvaluesQCTestBackup",
+      "fetch_mode": "custom_query",
+      "source_fetch_query": "SELECT a.ClientAuditId, cv.QC_Outcome, 1 AS ClientId, 404 AS FlowId FROM prod_Workflow_Humana.dbo.Audit (NOLOCK) a JOIN prod_Workflow_Humana.dbo.Customvalues404 cv (NOLOCK) ON a.id = cv.Audit_id WHERE cv.claimlineuid IS NULL AND cv.QC_Outcome IS NOT NULL",
+      "destination_fetch_query": "SELECT ClientAuditId, QC_Outcome FROM PI_EDWDDS.dbo.CustomvaluesQCTestBackup WITH (NOLOCK)",
+      "reference_keys": [
+        {
+          "name": "clientauditid",
+          "source_column": "ClientAuditId",
+          "destination_column": "ClientAuditId"
+        }
+      ],
+      "validation_pairs": [
+        [
+          "QC_Outcome",
+          "QC_Outcome"
+        ]
+      ],
+      "exclude_from_validation": [],
+      "normalization": {
+        "type": "text",
+        "trim": true,
+        "collapse_whitespace": true,
+        "case_insensitive": true
+      }
+    },
+    {
+      "client_id": "1",
+      "flow_id": "606",
+      "source_server": "ncsql46",
+      "source_database": "prod_Workflow_Humana",
+      "destination_server": "ncsql42",
+      "destination_database": "PI_EDWDDS",
+      "source_table": "dbo.Customvalues606",
+      "destination_table": "dbo.CustomvaluesQCTestBackup",
+      "fetch_mode": "custom_query",
+      "source_fetch_query": "SELECT a.ClientAuditId, cv.QC_Outcome, 1 AS ClientId, 606 AS FlowId FROM prod_Workflow_Humana.dbo.Audit (NOLOCK) a JOIN prod_Workflow_Humana.dbo.Customvalues606 cv (NOLOCK) ON a.id = cv.Audit_id WHERE cv.claimlineuid IS NULL AND cv.QC_Outcome IS NOT NULL",
+      "destination_fetch_query": "SELECT ClientAuditId, QC_Outcome FROM PI_EDWDDS.dbo.CustomvaluesQCTestBackup WITH (NOLOCK)",
+      "reference_keys": [
+        {
+          "name": "clientauditid",
+          "source_column": "ClientAuditId",
+          "destination_column": "ClientAuditId"
+        }
+      ],
+      "validation_pairs": [
+        [
+          "QC_Outcome",
+          "QC_Outcome"
+        ]
+      ],
+      "exclude_from_validation": [],
+      "normalization": {
+        "type": "text",
+        "trim": true,
+        "collapse_whitespace": true,
+        "case_insensitive": true
+      }
+    },
+    {
+      "client_id": "1",
+      "flow_id": "707",
+      "source_server": "ncsql46",
+      "source_database": "prod_Workflow_Humana",
+      "destination_server": "ncsql42",
+      "destination_database": "PI_EDWDDS",
+      "source_table": "dbo.Customvalues707",
+      "destination_table": "dbo.CustomvaluesQCTestBackup",
+      "fetch_mode": "custom_query",
+      "source_fetch_query": "SELECT a.ClientAuditId, cv.QC_Outcome, 1 AS ClientId, 707 AS FlowId FROM prod_Workflow_Humana.dbo.Audit (NOLOCK) a JOIN prod_Workflow_Humana.dbo.Customvalues707 cv (NOLOCK) ON a.id = cv.Audit_id WHERE cv.claimlineuid IS NULL AND cv.QC_Outcome IS NOT NULL",
+      "destination_fetch_query": "SELECT ClientAuditId, QC_Outcome FROM PI_EDWDDS.dbo.CustomvaluesQCTestBackup WITH (NOLOCK)",
+      "reference_keys": [
+        {
+          "name": "clientauditid",
+          "source_column": "ClientAuditId",
+          "destination_column": "ClientAuditId"
+        }
+      ],
+      "validation_pairs": [
+        [
+          "QC_Outcome",
+          "QC_Outcome"
+        ]
+      ],
+      "exclude_from_validation": [],
+      "normalization": {
+        "type": "text",
+        "trim": true,
+        "collapse_whitespace": true,
+        "case_insensitive": true
+      }
+    },
+    {
+      "client_id": "1",
+      "flow_id": "1212",
+      "source_server": "ncsql46",
+      "source_database": "prod_Workflow_Humana",
+      "destination_server": "ncsql42",
+      "destination_database": "PI_EDWDDS",
+      "source_table": "dbo.Customvalues1212",
+      "destination_table": "dbo.CustomvaluesQCTestBackup",
+      "fetch_mode": "custom_query",
+      "source_fetch_query": "SELECT a.ClientAuditId, cv.QC_Outcome, 1 AS ClientId, 1212 AS FlowId FROM prod_Workflow_Humana.dbo.Audit (NOLOCK) a JOIN prod_Workflow_Humana.dbo.Customvalues1212 cv (NOLOCK) ON a.id = cv.Audit_id WHERE cv.claimlineuid IS NULL AND cv.QC_Outcome IS NOT NULL",
+      "destination_fetch_query": "SELECT ClientAuditId, QC_Outcome FROM PI_EDWDDS.dbo.CustomvaluesQCTestBackup WITH (NOLOCK)",
+      "reference_keys": [
+        {
+          "name": "clientauditid",
+          "source_column": "ClientAuditId",
+          "destination_column": "ClientAuditId"
+        }
+      ],
+      "validation_pairs": [
+        [
+          "QC_Outcome",
+          "QC_Outcome"
+        ]
+      ],
+      "exclude_from_validation": [],
+      "normalization": {
+        "type": "text",
+        "trim": true,
+        "collapse_whitespace": true,
+        "case_insensitive": true
+      }
+    },
+    {
+      "client_id": "1",
+      "flow_id": "1313",
+      "source_server": "ncsql46",
+      "source_database": "prod_Workflow_Humana",
+      "destination_server": "ncsql42",
+      "destination_database": "PI_EDWDDS",
+      "source_table": "dbo.Customvalues1313",
+      "destination_table": "dbo.CustomvaluesQCTestBackup",
+      "fetch_mode": "custom_query",
+      "source_fetch_query": "SELECT a.ClientAuditId, cv.QC_Outcome, 1 AS ClientId, 1313 AS FlowId FROM prod_Workflow_Humana.dbo.Audit (NOLOCK) a JOIN prod_Workflow_Humana.dbo.Customvalues1313 cv (NOLOCK) ON a.id = cv.Audit_id WHERE cv.claimlineuid IS NULL AND cv.QC_Outcome IS NOT NULL",
+      "destination_fetch_query": "SELECT ClientAuditId, QC_Outcome FROM PI_EDWDDS.dbo.CustomvaluesQCTestBackup WITH (NOLOCK)",
+      "reference_keys": [
+        {
+          "name": "clientauditid",
+          "source_column": "ClientAuditId",
+          "destination_column": "ClientAuditId"
+        }
+      ],
+      "validation_pairs": [
+        [
+          "QC_Outcome",
+          "QC_Outcome"
+        ]
+      ],
+      "exclude_from_validation": [],
+      "normalization": {
+        "type": "text",
+        "trim": true,
+        "collapse_whitespace": true,
+        "case_insensitive": true
+      }
+    },
+    {
+      "client_id": "1",
+      "flow_id": "1414",
+      "source_server": "ncsql46",
+      "source_database": "prod_Workflow_Humana",
+      "destination_server": "ncsql42",
+      "destination_database": "PI_EDWDDS",
+      "source_table": "dbo.Customvalues1414",
+      "destination_table": "dbo.CustomvaluesQCTestBackup",
+      "fetch_mode": "custom_query",
+      "source_fetch_query": "SELECT a.ClientAuditId, cv.QC_Outcome, 1 AS ClientId, 1414 AS FlowId FROM prod_Workflow_Humana.dbo.Audit (NOLOCK) a JOIN prod_Workflow_Humana.dbo.Customvalues1414 cv (NOLOCK) ON a.id = cv.Audit_id WHERE cv.claimlineuid IS NULL AND cv.QC_Outcome IS NOT NULL",
+      "destination_fetch_query": "SELECT ClientAuditId, QC_Outcome FROM PI_EDWDDS.dbo.CustomvaluesQCTestBackup WITH (NOLOCK)",
+      "reference_keys": [
+        {
+          "name": "clientauditid",
+          "source_column": "ClientAuditId",
+          "destination_column": "ClientAuditId"
+        }
+      ],
+      "validation_pairs": [
+        [
+          "QC_Outcome",
+          "QC_Outcome"
+        ]
+      ],
+      "exclude_from_validation": [],
+      "normalization": {
+        "type": "text",
+        "trim": true,
+        "collapse_whitespace": true,
+        "case_insensitive": true
+      }
+    },
+    {
+      "client_id": "1",
+      "flow_id": "1515",
+      "source_server": "ncsql46",
+      "source_database": "prod_Workflow_Humana",
+      "destination_server": "ncsql42",
+      "destination_database": "PI_EDWDDS",
+      "source_table": "dbo.Customvalues1515",
+      "destination_table": "dbo.CustomvaluesQCTestBackup",
+      "fetch_mode": "custom_query",
+      "source_fetch_query": "SELECT a.ClientAuditId, cv.QC_Outcome, 1 AS ClientId, 1515 AS FlowId FROM prod_Workflow_Humana.dbo.Audit (NOLOCK) a JOIN prod_Workflow_Humana.dbo.Customvalues1515 cv (NOLOCK) ON a.id = cv.Audit_id WHERE cv.claimlineuid IS NULL AND cv.QC_Outcome IS NOT NULL",
+      "destination_fetch_query": "SELECT ClientAuditId, QC_Outcome FROM PI_EDWDDS.dbo.CustomvaluesQCTestBackup WITH (NOLOCK)",
+      "reference_keys": [
+        {
+          "name": "clientauditid",
+          "source_column": "ClientAuditId",
+          "destination_column": "ClientAuditId"
+        }
+      ],
+      "validation_pairs": [
+        [
+          "QC_Outcome",
+          "QC_Outcome"
+        ]
+      ],
+      "exclude_from_validation": [],
+      "normalization": {
+        "type": "text",
+        "trim": true,
+        "collapse_whitespace": true,
+        "case_insensitive": true
+      }
+    },
+    {
+      "client_id": "1",
+      "flow_id": "1616",
+      "source_server": "ncsql46",
+      "source_database": "prod_Workflow_Humana",
+      "destination_server": "ncsql42",
+      "destination_database": "PI_EDWDDS",
+      "source_table": "dbo.Customvalues1616",
+      "destination_table": "dbo.CustomvaluesQCTestBackup",
+      "fetch_mode": "custom_query",
+      "source_fetch_query": "SELECT a.ClientAuditId, cv.QC_Outcome, 1 AS ClientId, 1616 AS FlowId FROM prod_Workflow_Humana.dbo.Audit (NOLOCK) a JOIN prod_Workflow_Humana.dbo.Customvalues1616 cv (NOLOCK) ON a.id = cv.Audit_id WHERE cv.claimlineuid IS NULL AND cv.QC_Outcome IS NOT NULL",
+      "destination_fetch_query": "SELECT ClientAuditId, QC_Outcome FROM PI_EDWDDS.dbo.CustomvaluesQCTestBackup WITH (NOLOCK)",
+      "reference_keys": [
+        {
+          "name": "clientauditid",
+          "source_column": "ClientAuditId",
+          "destination_column": "ClientAuditId"
+        }
+      ],
+      "validation_pairs": [
+        [
+          "QC_Outcome",
+          "QC_Outcome"
+        ]
+      ],
+      "exclude_from_validation": [],
+      "normalization": {
+        "type": "text",
+        "trim": true,
+        "collapse_whitespace": true,
+        "case_insensitive": true
+      }
+    },
+    {
+      "client_id": "1",
+      "flow_id": "1717",
+      "source_server": "ncsql46",
+      "source_database": "prod_Workflow_Humana",
+      "destination_server": "ncsql42",
+      "destination_database": "PI_EDWDDS",
+      "source_table": "dbo.Customvalues1717",
+      "destination_table": "dbo.CustomvaluesQCTestBackup",
+      "fetch_mode": "custom_query",
+      "source_fetch_query": "SELECT a.ClientAuditId, cv.QC_Outcome, 1 AS ClientId, 1717 AS FlowId FROM prod_Workflow_Humana.dbo.Audit (NOLOCK) a JOIN prod_Workflow_Humana.dbo.Customvalues1717 cv (NOLOCK) ON a.id = cv.Audit_id WHERE cv.claimlineuid IS NULL AND cv.QC_Outcome IS NOT NULL",
+      "destination_fetch_query": "SELECT ClientAuditId, QC_Outcome FROM PI_EDWDDS.dbo.CustomvaluesQCTestBackup WITH (NOLOCK)",
+      "reference_keys": [
+        {
+          "name": "clientauditid",
+          "source_column": "ClientAuditId",
+          "destination_column": "ClientAuditId"
+        }
+      ],
+      "validation_pairs": [
+        [
+          "QC_Outcome",
+          "QC_Outcome"
+        ]
+      ],
+      "exclude_from_validation": [],
+      "normalization": {
+        "type": "text",
+        "trim": true,
+        "collapse_whitespace": true,
+        "case_insensitive": true
+      }
+    },
+    {
+      "client_id": "133",
+      "flow_id": "1",
+      "source_server": "ncsql46",
+      "source_database": "prod_Workflow_Highmark2Offshore",
+      "destination_server": "ncsql42",
+      "destination_database": "PI_EDWDDS",
+      "source_table": "dbo.Customvalues1",
+      "destination_table": "dbo.CustomvaluesQCTestBackup",
+      "fetch_mode": "custom_query",
+      "source_fetch_query": "SELECT a.ClientAuditId, cv.QC_Outcome, 133 AS ClientId, 1 AS FlowId FROM prod_Workflow_Highmark2Offshore.dbo.Audit (NOLOCK) a JOIN prod_Workflow_Highmark2Offshore.dbo.Customvalues1 cv (NOLOCK) ON a.id = cv.Audit_id WHERE cv.claimlineuid IS NULL AND cv.QC_Outcome IS NOT NULL",
+      "destination_fetch_query": "SELECT ClientAuditId, QC_Outcome FROM PI_EDWDDS.dbo.CustomvaluesQCTestBackup WITH (NOLOCK)",
+      "reference_keys": [
+        {
+          "name": "clientauditid",
+          "source_column": "ClientAuditId",
+          "destination_column": "ClientAuditId"
+        }
+      ],
+      "validation_pairs": [
+        [
+          "QC_Outcome",
+          "QC_Outcome"
+        ]
+      ],
+      "exclude_from_validation": [],
+      "normalization": {
+        "type": "text",
+        "trim": true,
+        "collapse_whitespace": true,
+        "case_insensitive": true
+      }
+    },
+    {
+      "client_id": "133",
+      "flow_id": "101",
+      "source_server": "ncsql46",
+      "source_database": "prod_Workflow_Highmark2Offshore",
+      "destination_server": "ncsql42",
+      "destination_database": "PI_EDWDDS",
+      "source_table": "dbo.Customvalues101",
+      "destination_table": "dbo.CustomvaluesQCTestBackup",
+      "fetch_mode": "custom_query",
+      "source_fetch_query": "SELECT a.ClientAuditId, cv.QC_Outcome, 133 AS ClientId, 101 AS FlowId FROM prod_Workflow_Highmark2Offshore.dbo.Audit (NOLOCK) a JOIN prod_Workflow_Highmark2Offshore.dbo.Customvalues101 cv (NOLOCK) ON a.id = cv.Audit_id WHERE cv.claimlineuid IS NULL AND cv.QC_Outcome IS NOT NULL",
+      "destination_fetch_query": "SELECT ClientAuditId, QC_Outcome FROM PI_EDWDDS.dbo.CustomvaluesQCTestBackup WITH (NOLOCK)",
+      "reference_keys": [
+        {
+          "name": "clientauditid",
+          "source_column": "ClientAuditId",
+          "destination_column": "ClientAuditId"
+        }
+      ],
+      "validation_pairs": [
+        [
+          "QC_Outcome",
+          "QC_Outcome"
+        ]
+      ],
+      "exclude_from_validation": [],
+      "normalization": {
+        "type": "text",
+        "trim": true,
+        "collapse_whitespace": true,
+        "case_insensitive": true
+      }
+    },
+    {
+      "client_id": "133",
+      "flow_id": "202",
+      "source_server": "ncsql46",
+      "source_database": "prod_Workflow_Highmark2Offshore",
+      "destination_server": "ncsql42",
+      "destination_database": "PI_EDWDDS",
+      "source_table": "dbo.Customvalues202",
+      "destination_table": "dbo.CustomvaluesQCTestBackup",
+      "fetch_mode": "custom_query",
+      "source_fetch_query": "SELECT a.ClientAuditId, cv.QC_Outcome, 133 AS ClientId, 202 AS FlowId FROM prod_Workflow_Highmark2Offshore.dbo.Audit (NOLOCK) a JOIN prod_Workflow_Highmark2Offshore.dbo.Customvalues202 cv (NOLOCK) ON a.id = cv.Audit_id WHERE cv.claimlineuid IS NULL AND cv.QC_Outcome IS NOT NULL",
+      "destination_fetch_query": "SELECT ClientAuditId, QC_Outcome FROM PI_EDWDDS.dbo.CustomvaluesQCTestBackup WITH (NOLOCK)",
+      "reference_keys": [
+        {
+          "name": "clientauditid",
+          "source_column": "ClientAuditId",
+          "destination_column": "ClientAuditId"
+        }
+      ],
+      "validation_pairs": [
+        [
+          "QC_Outcome",
+          "QC_Outcome"
+        ]
+      ],
+      "exclude_from_validation": [],
+      "normalization": {
+        "type": "text",
+        "trim": true,
+        "collapse_whitespace": true,
+        "case_insensitive": true
+      }
+    },
+    {
+      "client_id": "133",
+      "flow_id": "505",
+      "source_server": "ncsql46",
+      "source_database": "prod_Workflow_Highmark2Offshore",
+      "destination_server": "ncsql42",
+      "destination_database": "PI_EDWDDS",
+      "source_table": "dbo.Customvalues505",
+      "destination_table": "dbo.CustomvaluesQCTestBackup",
+      "fetch_mode": "custom_query",
+      "source_fetch_query": "SELECT a.ClientAuditId, cv.QC_Outcome, 133 AS ClientId, 505 AS FlowId FROM prod_Workflow_Highmark2Offshore.dbo.Audit (NOLOCK) a JOIN prod_Workflow_Highmark2Offshore.dbo.Customvalues505 cv (NOLOCK) ON a.id = cv.Audit_id WHERE cv.claimlineuid IS NULL AND cv.QC_Outcome IS NOT NULL",
+      "destination_fetch_query": "SELECT ClientAuditId, QC_Outcome FROM PI_EDWDDS.dbo.CustomvaluesQCTestBackup WITH (NOLOCK)",
+      "reference_keys": [
+        {
+          "name": "clientauditid",
+          "source_column": "ClientAuditId",
+          "destination_column": "ClientAuditId"
+        }
+      ],
+      "validation_pairs": [
+        [
+          "QC_Outcome",
+          "QC_Outcome"
+        ]
+      ],
+      "exclude_from_validation": [],
+      "normalization": {
+        "type": "text",
+        "trim": true,
+        "collapse_whitespace": true,
+        "case_insensitive": true
+      }
+    },
+    {
+      "client_id": "133",
+      "flow_id": "606",
+      "source_server": "ncsql46",
+      "source_database": "prod_Workflow_Highmark2Offshore",
+      "destination_server": "ncsql42",
+      "destination_database": "PI_EDWDDS",
+      "source_table": "dbo.Customvalues606",
+      "destination_table": "dbo.CustomvaluesQCTestBackup",
+      "fetch_mode": "custom_query",
+      "source_fetch_query": "SELECT a.ClientAuditId, cv.QC_Outcome, 133 AS ClientId, 606 AS FlowId FROM prod_Workflow_Highmark2Offshore.dbo.Audit (NOLOCK) a JOIN prod_Workflow_Highmark2Offshore.dbo.Customvalues606 cv (NOLOCK) ON a.id = cv.Audit_id WHERE cv.claimlineuid IS NULL AND cv.QC_Outcome IS NOT NULL",
+      "destination_fetch_query": "SELECT ClientAuditId, QC_Outcome FROM PI_EDWDDS.dbo.CustomvaluesQCTestBackup WITH (NOLOCK)",
+      "reference_keys": [
+        {
+          "name": "clientauditid",
+          "source_column": "ClientAuditId",
+          "destination_column": "ClientAuditId"
+        }
+      ],
+      "validation_pairs": [
+        [
+          "QC_Outcome",
+          "QC_Outcome"
+        ]
+      ],
+      "exclude_from_validation": [],
+      "normalization": {
+        "type": "text",
+        "trim": true,
+        "collapse_whitespace": true,
+        "case_insensitive": true
+      }
+    },
+    {
+      "client_id": "133",
+      "flow_id": "707",
+      "source_server": "ncsql46",
+      "source_database": "prod_Workflow_Highmark2Offshore",
+      "destination_server": "ncsql42",
+      "destination_database": "PI_EDWDDS",
+      "source_table": "dbo.Customvalues707",
+      "destination_table": "dbo.CustomvaluesQCTestBackup",
+      "fetch_mode": "custom_query",
+      "source_fetch_query": "SELECT a.ClientAuditId, cv.QC_Outcome, 133 AS ClientId, 707 AS FlowId FROM prod_Workflow_Highmark2Offshore.dbo.Audit (NOLOCK) a JOIN prod_Workflow_Highmark2Offshore.dbo.Customvalues707 cv (NOLOCK) ON a.id = cv.Audit_id WHERE cv.claimlineuid IS NULL AND cv.QC_Outcome IS NOT NULL",
+      "destination_fetch_query": "SELECT ClientAuditId, QC_Outcome FROM PI_EDWDDS.dbo.CustomvaluesQCTestBackup WITH (NOLOCK)",
+      "reference_keys": [
+        {
+          "name": "clientauditid",
+          "source_column": "ClientAuditId",
+          "destination_column": "ClientAuditId"
+        }
+      ],
+      "validation_pairs": [
+        [
+          "QC_Outcome",
+          "QC_Outcome"
+        ]
+      ],
+      "exclude_from_validation": [],
+      "normalization": {
+        "type": "text",
+        "trim": true,
+        "collapse_whitespace": true,
+        "case_insensitive": true
+      }
+    },
+    {
+      "client_id": "131",
+      "flow_id": "1",
+      "source_server": "ncsql46",
+      "source_database": "prod_Workflow_HighMark2",
+      "destination_server": "ncsql42",
+      "destination_database": "PI_EDWDDS",
+      "source_table": "dbo.Customvalues1",
+      "destination_table": "dbo.CustomvaluesQCTestBackup",
+      "fetch_mode": "custom_query",
+      "source_fetch_query": "SELECT a.ClientAuditId, cv.QC_Outcome, 131 AS ClientId, 1 AS FlowId FROM prod_Workflow_HighMark2.dbo.Audit (NOLOCK) a JOIN prod_Workflow_HighMark2.dbo.Customvalues1 cv (NOLOCK) ON a.id = cv.Audit_id WHERE cv.claimlineuid IS NULL AND cv.QC_Outcome IS NOT NULL",
+      "destination_fetch_query": "SELECT ClientAuditId, QC_Outcome FROM PI_EDWDDS.dbo.CustomvaluesQCTestBackup WITH (NOLOCK)",
+      "reference_keys": [
+        {
+          "name": "clientauditid",
+          "source_column": "ClientAuditId",
+          "destination_column": "ClientAuditId"
+        }
+      ],
+      "validation_pairs": [
+        [
+          "QC_Outcome",
+          "QC_Outcome"
+        ]
+      ],
+      "exclude_from_validation": [],
+      "normalization": {
+        "type": "text",
+        "trim": true,
+        "collapse_whitespace": true,
+        "case_insensitive": true
+      }
+    },
+    {
+      "client_id": "131",
+      "flow_id": "202",
+      "source_server": "ncsql46",
+      "source_database": "prod_Workflow_HighMark2",
+      "destination_server": "ncsql42",
+      "destination_database": "PI_EDWDDS",
+      "source_table": "dbo.Customvalues202",
+      "destination_table": "dbo.CustomvaluesQCTestBackup",
+      "fetch_mode": "custom_query",
+      "source_fetch_query": "SELECT a.ClientAuditId, cv.QC_Outcome, 131 AS ClientId, 202 AS FlowId FROM prod_Workflow_HighMark2.dbo.Audit (NOLOCK) a JOIN prod_Workflow_HighMark2.dbo.Customvalues202 cv (NOLOCK) ON a.id = cv.Audit_id WHERE cv.claimlineuid IS NULL AND cv.QC_Outcome IS NOT NULL",
+      "destination_fetch_query": "SELECT ClientAuditId, QC_Outcome FROM PI_EDWDDS.dbo.CustomvaluesQCTestBackup WITH (NOLOCK)",
+      "reference_keys": [
+        {
+          "name": "clientauditid",
+          "source_column": "ClientAuditId",
+          "destination_column": "ClientAuditId"
+        }
+      ],
+      "validation_pairs": [
+        [
+          "QC_Outcome",
+          "QC_Outcome"
+        ]
+      ],
+      "exclude_from_validation": [],
+      "normalization": {
+        "type": "text",
+        "trim": true,
+        "collapse_whitespace": true,
+        "case_insensitive": true
+      }
+    },
+    {
+      "client_id": "97",
+      "flow_id": "1",
+      "source_server": "ncsql46",
+      "source_database": "prod_Workflow_HealthSun",
+      "destination_server": "ncsql42",
+      "destination_database": "PI_EDWDDS",
+      "source_table": "dbo.Customvalues1",
+      "destination_table": "dbo.CustomvaluesQCTestBackup",
+      "fetch_mode": "custom_query",
+      "source_fetch_query": "SELECT a.ClientAuditId, cv.QC_Outcome, 97 AS ClientId, 1 AS FlowId FROM prod_Workflow_HealthSun.dbo.Audit (NOLOCK) a JOIN prod_Workflow_HealthSun.dbo.Customvalues1 cv (NOLOCK) ON a.id = cv.Audit_id WHERE cv.claimlineuid IS NULL AND cv.QC_Outcome IS NOT NULL",
+      "destination_fetch_query": "SELECT ClientAuditId, QC_Outcome FROM PI_EDWDDS.dbo.CustomvaluesQCTestBackup WITH (NOLOCK)",
+      "reference_keys": [
+        {
+          "name": "clientauditid",
+          "source_column": "ClientAuditId",
+          "destination_column": "ClientAuditId"
+        }
+      ],
+      "validation_pairs": [
+        [
+          "QC_Outcome",
+          "QC_Outcome"
+        ]
+      ],
+      "exclude_from_validation": [],
+      "normalization": {
+        "type": "text",
+        "trim": true,
+        "collapse_whitespace": true,
+        "case_insensitive": true
+      }
+    },
+    {
+      "client_id": "129",
+      "flow_id": "1",
+      "source_server": "ncsql46",
+      "source_database": "prod_Workflow_DevotedHealthPrepay",
+      "destination_server": "ncsql42",
+      "destination_database": "PI_EDWDDS",
+      "source_table": "dbo.Customvalues1",
+      "destination_table": "dbo.CustomvaluesQCTestBackup",
+      "fetch_mode": "custom_query",
+      "source_fetch_query": "SELECT a.ClientAuditId, cv.QC_Outcome, 129 AS ClientId, 1 AS FlowId FROM prod_Workflow_DevotedHealthPrepay.dbo.Audit (NOLOCK) a JOIN prod_Workflow_DevotedHealthPrepay.dbo.Customvalues1 cv (NOLOCK) ON a.id = cv.Audit_id WHERE cv.claimlineuid IS NULL AND cv.QC_Outcome IS NOT NULL",
+      "destination_fetch_query": "SELECT ClientAuditId, QC_Outcome FROM PI_EDWDDS.dbo.CustomvaluesQCTestBackup WITH (NOLOCK)",
+      "reference_keys": [
+        {
+          "name": "clientauditid",
+          "source_column": "ClientAuditId",
+          "destination_column": "ClientAuditId"
+        }
+      ],
+      "validation_pairs": [
+        [
+          "QC_Outcome",
+          "QC_Outcome"
+        ]
+      ],
+      "exclude_from_validation": [],
+      "normalization": {
+        "type": "text",
+        "trim": true,
+        "collapse_whitespace": true,
+        "case_insensitive": true
+      }
+    },
+    {
+      "client_id": "129",
+      "flow_id": "101",
+      "source_server": "ncsql46",
+      "source_database": "prod_Workflow_DevotedHealthPrepay",
+      "destination_server": "ncsql42",
+      "destination_database": "PI_EDWDDS",
+      "source_table": "dbo.Customvalues101",
+      "destination_table": "dbo.CustomvaluesQCTestBackup",
+      "fetch_mode": "custom_query",
+      "source_fetch_query": "SELECT a.ClientAuditId, cv.QC_Outcome, 129 AS ClientId, 101 AS FlowId FROM prod_Workflow_DevotedHealthPrepay.dbo.Audit (NOLOCK) a JOIN prod_Workflow_DevotedHealthPrepay.dbo.Customvalues101 cv (NOLOCK) ON a.id = cv.Audit_id WHERE cv.claimlineuid IS NULL AND cv.QC_Outcome IS NOT NULL",
+      "destination_fetch_query": "SELECT ClientAuditId, QC_Outcome FROM PI_EDWDDS.dbo.CustomvaluesQCTestBackup WITH (NOLOCK)",
+      "reference_keys": [
+        {
+          "name": "clientauditid",
+          "source_column": "ClientAuditId",
+          "destination_column": "ClientAuditId"
+        }
+      ],
+      "validation_pairs": [
+        [
+          "QC_Outcome",
+          "QC_Outcome"
+        ]
+      ],
+      "exclude_from_validation": [],
+      "normalization": {
+        "type": "text",
+        "trim": true,
+        "collapse_whitespace": true,
+        "case_insensitive": true
+      }
+    },
+    {
+      "client_id": "129",
+      "flow_id": "202",
+      "source_server": "ncsql46",
+      "source_database": "prod_Workflow_DevotedHealthPrepay",
+      "destination_server": "ncsql42",
+      "destination_database": "PI_EDWDDS",
+      "source_table": "dbo.Customvalues202",
+      "destination_table": "dbo.CustomvaluesQCTestBackup",
+      "fetch_mode": "custom_query",
+      "source_fetch_query": "SELECT a.ClientAuditId, cv.QC_Outcome, 129 AS ClientId, 202 AS FlowId FROM prod_Workflow_DevotedHealthPrepay.dbo.Audit (NOLOCK) a JOIN prod_Workflow_DevotedHealthPrepay.dbo.Customvalues202 cv (NOLOCK) ON a.id = cv.Audit_id WHERE cv.claimlineuid IS NULL AND cv.QC_Outcome IS NOT NULL",
+      "destination_fetch_query": "SELECT ClientAuditId, QC_Outcome FROM PI_EDWDDS.dbo.CustomvaluesQCTestBackup WITH (NOLOCK)",
+      "reference_keys": [
+        {
+          "name": "clientauditid",
+          "source_column": "ClientAuditId",
+          "destination_column": "ClientAuditId"
+        }
+      ],
+      "validation_pairs": [
+        [
+          "QC_Outcome",
+          "QC_Outcome"
+        ]
+      ],
+      "exclude_from_validation": [],
+      "normalization": {
+        "type": "text",
+        "trim": true,
+        "collapse_whitespace": true,
+        "case_insensitive": true
+      }
+    },
+    {
+      "client_id": "129",
+      "flow_id": "303",
+      "source_server": "ncsql46",
+      "source_database": "prod_Workflow_DevotedHealthPrepay",
+      "destination_server": "ncsql42",
+      "destination_database": "PI_EDWDDS",
+      "source_table": "dbo.Customvalues303",
+      "destination_table": "dbo.CustomvaluesQCTestBackup",
+      "fetch_mode": "custom_query",
+      "source_fetch_query": "SELECT a.ClientAuditId, cv.QC_Outcome, 129 AS ClientId, 303 AS FlowId FROM prod_Workflow_DevotedHealthPrepay.dbo.Audit (NOLOCK) a JOIN prod_Workflow_DevotedHealthPrepay.dbo.Customvalues303 cv (NOLOCK) ON a.id = cv.Audit_id WHERE cv.claimlineuid IS NULL AND cv.QC_Outcome IS NOT NULL",
+      "destination_fetch_query": "SELECT ClientAuditId, QC_Outcome FROM PI_EDWDDS.dbo.CustomvaluesQCTestBackup WITH (NOLOCK)",
+      "reference_keys": [
+        {
+          "name": "clientauditid",
+          "source_column": "ClientAuditId",
+          "destination_column": "ClientAuditId"
+        }
+      ],
+      "validation_pairs": [
+        [
+          "QC_Outcome",
+          "QC_Outcome"
+        ]
+      ],
+      "exclude_from_validation": [],
+      "normalization": {
+        "type": "text",
+        "trim": true,
+        "collapse_whitespace": true,
+        "case_insensitive": true
+      }
+    },
+    {
+      "client_id": "111",
+      "flow_id": "101",
+      "source_server": "ncsql46",
+      "source_database": "prod_Workflow_DevotedHealth",
+      "destination_server": "ncsql42",
+      "destination_database": "PI_EDWDDS",
+      "source_table": "dbo.Customvalues101",
+      "destination_table": "dbo.CustomvaluesQCTestBackup",
+      "fetch_mode": "custom_query",
+      "source_fetch_query": "SELECT a.ClientAuditId, cv.QC_Outcome, 111 AS ClientId, 101 AS FlowId FROM prod_Workflow_DevotedHealth.dbo.Audit (NOLOCK) a JOIN prod_Workflow_DevotedHealth.dbo.Customvalues101 cv (NOLOCK) ON a.id = cv.Audit_id WHERE cv.claimlineuid IS NULL AND cv.QC_Outcome IS NOT NULL",
+      "destination_fetch_query": "SELECT ClientAuditId, QC_Outcome FROM PI_EDWDDS.dbo.CustomvaluesQCTestBackup WITH (NOLOCK)",
+      "reference_keys": [
+        {
+          "name": "clientauditid",
+          "source_column": "ClientAuditId",
+          "destination_column": "ClientAuditId"
+        }
+      ],
+      "validation_pairs": [
+        [
+          "QC_Outcome",
+          "QC_Outcome"
+        ]
+      ],
+      "exclude_from_validation": [],
+      "normalization": {
+        "type": "text",
+        "trim": true,
+        "collapse_whitespace": true,
+        "case_insensitive": true
+      }
+    },
+    {
+      "client_id": "111",
+      "flow_id": "303",
+      "source_server": "ncsql46",
+      "source_database": "prod_Workflow_DevotedHealth",
+      "destination_server": "ncsql42",
+      "destination_database": "PI_EDWDDS",
+      "source_table": "dbo.Customvalues303",
+      "destination_table": "dbo.CustomvaluesQCTestBackup",
+      "fetch_mode": "custom_query",
+      "source_fetch_query": "SELECT a.ClientAuditId, cv.QC_Outcome, 111 AS ClientId, 303 AS FlowId FROM prod_Workflow_DevotedHealth.dbo.Audit (NOLOCK) a JOIN prod_Workflow_DevotedHealth.dbo.Customvalues303 cv (NOLOCK) ON a.id = cv.Audit_id WHERE cv.claimlineuid IS NULL AND cv.QC_Outcome IS NOT NULL",
+      "destination_fetch_query": "SELECT ClientAuditId, QC_Outcome FROM PI_EDWDDS.dbo.CustomvaluesQCTestBackup WITH (NOLOCK)",
+      "reference_keys": [
+        {
+          "name": "clientauditid",
+          "source_column": "ClientAuditId",
+          "destination_column": "ClientAuditId"
+        }
+      ],
+      "validation_pairs": [
+        [
+          "QC_Outcome",
+          "QC_Outcome"
+        ]
+      ],
+      "exclude_from_validation": [],
+      "normalization": {
+        "type": "text",
+        "trim": true,
+        "collapse_whitespace": true,
+        "case_insensitive": true
+      }
+    },
+    {
+      "client_id": "111",
+      "flow_id": "404",
+      "source_server": "ncsql46",
+      "source_database": "prod_Workflow_DevotedHealth",
+      "destination_server": "ncsql42",
+      "destination_database": "PI_EDWDDS",
+      "source_table": "dbo.Customvalues404",
+      "destination_table": "dbo.CustomvaluesQCTestBackup",
+      "fetch_mode": "custom_query",
+      "source_fetch_query": "SELECT a.ClientAuditId, cv.QC_Outcome, 111 AS ClientId, 404 AS FlowId FROM prod_Workflow_DevotedHealth.dbo.Customvalues404 cv (NOLOCK) JOIN prod_Workflow_DevotedHealth.dbo.Audit (NOLOCK) a ON a.id = cv.Audit_id WHERE cv.claimlineuid IS NULL AND cv.QC_Outcome IS NOT NULL",
+      "destination_fetch_query": "SELECT ClientAuditId, QC_Outcome FROM PI_EDWDDS.dbo.CustomvaluesQCTestBackup WITH (NOLOCK)",
+      "reference_keys": [
+        {
+          "name": "clientauditid",
+          "source_column": "ClientAuditId",
+          "destination_column": "ClientAuditId"
+        }
+      ],
+      "validation_pairs": [
+        [
+          "QC_Outcome",
+          "QC_Outcome"
+        ]
+      ],
+      "exclude_from_validation": [],
+      "normalization": {
+        "type": "text",
+        "trim": true,
+        "collapse_whitespace": true,
+        "case_insensitive": true
+      }
+    },
+    {
+      "client_id": "111",
+      "flow_id": "505",
+      "source_server": "ncsql46",
+      "source_database": "prod_Workflow_DevotedHealth",
+      "destination_server": "ncsql42",
+      "destination_database": "PI_EDWDDS",
+      "source_table": "dbo.Customvalues505",
+      "destination_table": "dbo.CustomvaluesQCTestBackup",
+      "fetch_mode": "custom_query",
+      "source_fetch_query": "SELECT a.ClientAuditId, cv.QC_Outcome, 111 AS ClientId, 505 AS FlowId FROM prod_Workflow_DevotedHealth.dbo.Audit (NOLOCK) a JOIN prod_Workflow_DevotedHealth.dbo.Customvalues505 cv (NOLOCK) ON a.id = cv.Audit_id WHERE cv.claimlineuid IS NULL AND cv.QC_Outcome IS NOT NULL",
+      "destination_fetch_query": "SELECT ClientAuditId, QC_Outcome FROM PI_EDWDDS.dbo.CustomvaluesQCTestBackup WITH (NOLOCK)",
+      "reference_keys": [
+        {
+          "name": "clientauditid",
+          "source_column": "ClientAuditId",
+          "destination_column": "ClientAuditId"
+        }
+      ],
+      "validation_pairs": [
+        [
+          "QC_Outcome",
+          "QC_Outcome"
+        ]
+      ],
+      "exclude_from_validation": [],
+      "normalization": {
+        "type": "text",
+        "trim": true,
+        "collapse_whitespace": true,
+        "case_insensitive": true
+      }
+    },
+    {
+      "client_id": "111",
+      "flow_id": "606",
+      "source_server": "ncsql46",
+      "source_database": "prod_Workflow_DevotedHealth",
+      "destination_server": "ncsql42",
+      "destination_database": "PI_EDWDDS",
+      "source_table": "dbo.Customvalues606",
+      "destination_table": "dbo.CustomvaluesQCTestBackup",
+      "fetch_mode": "custom_query",
+      "source_fetch_query": "SELECT a.ClientAuditId, cv.QC_Outcome, 111 AS ClientId, 606 AS FlowId FROM prod_Workflow_DevotedHealth.dbo.Audit (NOLOCK) a JOIN prod_Workflow_DevotedHealth.dbo.Customvalues606 cv (NOLOCK) ON a.id = cv.Audit_id WHERE cv.claimlineuid IS NULL AND cv.QC_Outcome IS NOT NULL",
+      "destination_fetch_query": "SELECT ClientAuditId, QC_Outcome FROM PI_EDWDDS.dbo.CustomvaluesQCTestBackup WITH (NOLOCK)",
+      "reference_keys": [
+        {
+          "name": "clientauditid",
+          "source_column": "ClientAuditId",
+          "destination_column": "ClientAuditId"
+        }
+      ],
+      "validation_pairs": [
+        [
+          "QC_Outcome",
+          "QC_Outcome"
+        ]
+      ],
+      "exclude_from_validation": [],
+      "normalization": {
+        "type": "text",
+        "trim": true,
+        "collapse_whitespace": true,
+        "case_insensitive": true
+      }
+    },
+    {
+      "client_id": "111",
+      "flow_id": "707",
+      "source_server": "ncsql46",
+      "source_database": "prod_Workflow_DevotedHealth",
+      "destination_server": "ncsql42",
+      "destination_database": "PI_EDWDDS",
+      "source_table": "dbo.Customvalues707",
+      "destination_table": "dbo.CustomvaluesQCTestBackup",
+      "fetch_mode": "custom_query",
+      "source_fetch_query": "SELECT a.ClientAuditId, cv.QC_Outcome, 111 AS ClientId, 707 AS FlowId FROM prod_Workflow_DevotedHealth.dbo.Audit (NOLOCK) a JOIN prod_Workflow_DevotedHealth.dbo.Customvalues707 cv (NOLOCK) ON a.id = cv.Audit_id WHERE cv.claimlineuid IS NULL AND cv.QC_Outcome IS NOT NULL",
+      "destination_fetch_query": "SELECT ClientAuditId, QC_Outcome FROM PI_EDWDDS.dbo.CustomvaluesQCTestBackup WITH (NOLOCK)",
+      "reference_keys": [
+        {
+          "name": "clientauditid",
+          "source_column": "ClientAuditId",
+          "destination_column": "ClientAuditId"
+        }
+      ],
+      "validation_pairs": [
+        [
+          "QC_Outcome",
+          "QC_Outcome"
+        ]
+      ],
+      "exclude_from_validation": [],
+      "normalization": {
+        "type": "text",
+        "trim": true,
+        "collapse_whitespace": true,
+        "case_insensitive": true
+      }
+    },
+    {
+      "client_id": "111",
+      "flow_id": "808",
+      "source_server": "ncsql46",
+      "source_database": "prod_Workflow_DevotedHealth",
+      "destination_server": "ncsql42",
+      "destination_database": "PI_EDWDDS",
+      "source_table": "dbo.Customvalues808",
+      "destination_table": "dbo.CustomvaluesQCTestBackup",
+      "fetch_mode": "custom_query",
+      "source_fetch_query": "SELECT a.ClientAuditId, cv.QC_Outcome, 111 AS ClientId, 808 AS FlowId FROM prod_Workflow_DevotedHealth.dbo.Audit (NOLOCK) a JOIN prod_Workflow_DevotedHealth.dbo.Customvalues808 cv (NOLOCK) ON a.id = cv.Audit_id WHERE cv.claimlineuid IS NULL AND cv.QC_Outcome IS NOT NULL",
+      "destination_fetch_query": "SELECT ClientAuditId, QC_Outcome FROM PI_EDWDDS.dbo.CustomvaluesQCTestBackup WITH (NOLOCK)",
+      "reference_keys": [
+        {
+          "name": "clientauditid",
+          "source_column": "ClientAuditId",
+          "destination_column": "ClientAuditId"
+        }
+      ],
+      "validation_pairs": [
+        [
+          "QC_Outcome",
+          "QC_Outcome"
+        ]
+      ],
+      "exclude_from_validation": [],
+      "normalization": {
+        "type": "text",
+        "trim": true,
+        "collapse_whitespace": true,
+        "case_insensitive": true
+      }
+    },
+    {
+      "client_id": "111",
+      "flow_id": "909",
+      "source_server": "ncsql46",
+      "source_database": "prod_Workflow_DevotedHealth",
+      "destination_server": "ncsql42",
+      "destination_database": "PI_EDWDDS",
+      "source_table": "dbo.Customvalues909",
+      "destination_table": "dbo.CustomvaluesQCTestBackup",
+      "fetch_mode": "custom_query",
+      "source_fetch_query": "SELECT a.ClientAuditId, cv.QC_Outcome, 111 AS ClientId, 909 AS FlowId FROM prod_Workflow_DevotedHealth.dbo.Audit (NOLOCK) a JOIN prod_Workflow_DevotedHealth.dbo.Customvalues909 cv (NOLOCK) ON a.id = cv.Audit_id WHERE cv.claimlineuid IS NULL AND cv.QC_Outcome IS NOT NULL",
+      "destination_fetch_query": "SELECT ClientAuditId, QC_Outcome FROM PI_EDWDDS.dbo.CustomvaluesQCTestBackup WITH (NOLOCK)",
+      "reference_keys": [
+        {
+          "name": "clientauditid",
+          "source_column": "ClientAuditId",
+          "destination_column": "ClientAuditId"
+        }
+      ],
+      "validation_pairs": [
+        [
+          "QC_Outcome",
+          "QC_Outcome"
+        ]
+      ],
+      "exclude_from_validation": [],
+      "normalization": {
+        "type": "text",
+        "trim": true,
+        "collapse_whitespace": true,
+        "case_insensitive": true
+      }
+    },
+    {
+      "client_id": "111",
+      "flow_id": "1212",
+      "source_server": "ncsql46",
+      "source_database": "prod_Workflow_DevotedHealth",
+      "destination_server": "ncsql42",
+      "destination_database": "PI_EDWDDS",
+      "source_table": "dbo.Customvalues1212",
+      "destination_table": "dbo.CustomvaluesQCTestBackup",
+      "fetch_mode": "custom_query",
+      "source_fetch_query": "SELECT a.ClientAuditId, cv.QC_Outcome, 111 AS ClientId, 1212 AS FlowId FROM prod_Workflow_DevotedHealth.dbo.Audit (NOLOCK) a JOIN prod_Workflow_DevotedHealth.dbo.Customvalues1212 cv (NOLOCK) ON a.id = cv.Audit_id WHERE cv.claimlineuid IS NULL AND cv.QC_Outcome IS NOT NULL",
+      "destination_fetch_query": "SELECT ClientAuditId, QC_Outcome FROM PI_EDWDDS.dbo.CustomvaluesQCTestBackup WITH (NOLOCK)",
+      "reference_keys": [
+        {
+          "name": "clientauditid",
+          "source_column": "ClientAuditId",
+          "destination_column": "ClientAuditId"
+        }
+      ],
+      "validation_pairs": [
+        [
+          "QC_Outcome",
+          "QC_Outcome"
+        ]
+      ],
+      "exclude_from_validation": [],
+      "normalization": {
+        "type": "text",
+        "trim": true,
+        "collapse_whitespace": true,
+        "case_insensitive": true
+      }
+    },
+    {
+      "client_id": "111",
+      "flow_id": "1313",
+      "source_server": "ncsql46",
+      "source_database": "prod_Workflow_DevotedHealth",
+      "destination_server": "ncsql42",
+      "destination_database": "PI_EDWDDS",
+      "source_table": "dbo.Customvalues1313",
+      "destination_table": "dbo.CustomvaluesQCTestBackup",
+      "fetch_mode": "custom_query",
+      "source_fetch_query": "SELECT a.ClientAuditId, cv.QC_Outcome, 111 AS ClientId, 1313 AS FlowId FROM prod_Workflow_DevotedHealth.dbo.Audit (NOLOCK) a JOIN prod_Workflow_DevotedHealth.dbo.Customvalues1313 cv (NOLOCK) ON a.id = cv.Audit_id WHERE cv.claimlineuid IS NULL AND cv.QC_Outcome IS NOT NULL",
+      "destination_fetch_query": "SELECT ClientAuditId, QC_Outcome FROM PI_EDWDDS.dbo.CustomvaluesQCTestBackup WITH (NOLOCK)",
+      "reference_keys": [
+        {
+          "name": "clientauditid",
+          "source_column": "ClientAuditId",
+          "destination_column": "ClientAuditId"
+        }
+      ],
+      "validation_pairs": [
+        [
+          "QC_Outcome",
+          "QC_Outcome"
+        ]
+      ],
+      "exclude_from_validation": [],
+      "normalization": {
+        "type": "text",
+        "trim": true,
+        "collapse_whitespace": true,
+        "case_insensitive": true
+      }
+    },
+    {
+      "client_id": "111",
+      "flow_id": "1414",
+      "source_server": "ncsql46",
+      "source_database": "prod_Workflow_DevotedHealth",
+      "destination_server": "ncsql42",
+      "destination_database": "PI_EDWDDS",
+      "source_table": "dbo.Customvalues1414",
+      "destination_table": "dbo.CustomvaluesQCTestBackup",
+      "fetch_mode": "custom_query",
+      "source_fetch_query": "SELECT a.ClientAuditId, cv.QC_Outcome, 111 AS ClientId, 1414 AS FlowId FROM prod_Workflow_DevotedHealth.dbo.Audit (NOLOCK) a JOIN prod_Workflow_DevotedHealth.dbo.Customvalues1414 cv (NOLOCK) ON a.id = cv.Audit_id WHERE cv.claimlineuid IS NULL AND cv.QC_Outcome IS NOT NULL",
+      "destination_fetch_query": "SELECT ClientAuditId, QC_Outcome FROM PI_EDWDDS.dbo.CustomvaluesQCTestBackup WITH (NOLOCK)",
+      "reference_keys": [
+        {
+          "name": "clientauditid",
+          "source_column": "ClientAuditId",
+          "destination_column": "ClientAuditId"
+        }
+      ],
+      "validation_pairs": [
+        [
+          "QC_Outcome",
+          "QC_Outcome"
+        ]
+      ],
+      "exclude_from_validation": [],
+      "normalization": {
+        "type": "text",
+        "trim": true,
+        "collapse_whitespace": true,
+        "case_insensitive": true
+      }
+    },
+    {
+      "client_id": "3",
+      "flow_id": "101",
+      "source_server": "ncsql46",
+      "source_database": "prod_Workflow_ColoradoAccess",
+      "destination_server": "ncsql42",
+      "destination_database": "PI_EDWDDS",
+      "source_table": "dbo.Customvalues101",
+      "destination_table": "dbo.CustomvaluesQCTestBackup",
+      "fetch_mode": "custom_query",
+      "source_fetch_query": "SELECT a.ClientAuditId, cv.QC_Outcome, 3 AS ClientId, 101 AS FlowId FROM prod_Workflow_ColoradoAccess.dbo.Audit (NOLOCK) a JOIN prod_Workflow_ColoradoAccess.dbo.Customvalues101 cv (NOLOCK) ON a.id = cv.Audit_id WHERE cv.claimlineuid IS NULL AND cv.QC_Outcome IS NOT NULL",
+      "destination_fetch_query": "SELECT ClientAuditId, QC_Outcome FROM PI_EDWDDS.dbo.CustomvaluesQCTestBackup WITH (NOLOCK)",
+      "reference_keys": [
+        {
+          "name": "clientauditid",
+          "source_column": "ClientAuditId",
+          "destination_column": "ClientAuditId"
+        }
+      ],
+      "validation_pairs": [
+        [
+          "QC_Outcome",
+          "QC_Outcome"
+        ]
+      ],
+      "exclude_from_validation": [],
+      "normalization": {
+        "type": "text",
+        "trim": true,
+        "collapse_whitespace": true,
+        "case_insensitive": true
+      }
+    },
+    {
+      "client_id": "96",
+      "flow_id": "1",
+      "source_server": "ncsql46",
+      "source_database": "prod_Workflow_AetnaHRP",
+      "destination_server": "ncsql42",
+      "destination_database": "PI_EDWDDS",
+      "source_table": "dbo.Customvalues1",
+      "destination_table": "dbo.CustomvaluesQCTestBackup",
+      "fetch_mode": "custom_query",
+      "source_fetch_query": "SELECT a.ClientAuditId, cv.QC_Outcome, 96 AS ClientId, 1 AS FlowId FROM prod_Workflow_AetnaHRP.dbo.Audit (NOLOCK) a JOIN prod_Workflow_AetnaHRP.dbo.Customvalues1 cv (NOLOCK) ON a.id = cv.Audit_id WHERE cv.claimlineuid IS NULL AND cv.QC_Outcome IS NOT NULL",
+      "destination_fetch_query": "SELECT ClientAuditId, QC_Outcome FROM PI_EDWDDS.dbo.CustomvaluesQCTestBackup WITH (NOLOCK)",
+      "reference_keys": [
+        {
+          "name": "clientauditid",
+          "source_column": "ClientAuditId",
+          "destination_column": "ClientAuditId"
+        }
+      ],
+      "validation_pairs": [
+        [
+          "QC_Outcome",
+          "QC_Outcome"
+        ]
+      ],
+      "exclude_from_validation": [],
+      "normalization": {
+        "type": "text",
+        "trim": true,
+        "collapse_whitespace": true,
+        "case_insensitive": true
+      }
+    },
+    {
+      "client_id": "96",
+      "flow_id": "101",
+      "source_server": "ncsql46",
+      "source_database": "prod_Workflow_AetnaHRP",
+      "destination_server": "ncsql42",
+      "destination_database": "PI_EDWDDS",
+      "source_table": "dbo.Customvalues101",
+      "destination_table": "dbo.CustomvaluesQCTestBackup",
+      "fetch_mode": "custom_query",
+      "source_fetch_query": "SELECT a.ClientAuditId, cv.QC_Outcome, 96 AS ClientId, 101 AS FlowId FROM prod_Workflow_AetnaHRP.dbo.Audit (NOLOCK) a JOIN prod_Workflow_AetnaHRP.dbo.Customvalues101 cv (NOLOCK) ON a.id = cv.Audit_id WHERE cv.claimlineuid IS NULL AND cv.QC_Outcome IS NOT NULL",
+      "destination_fetch_query": "SELECT ClientAuditId, QC_Outcome FROM PI_EDWDDS.dbo.CustomvaluesQCTestBackup WITH (NOLOCK)",
+      "reference_keys": [
+        {
+          "name": "clientauditid",
+          "source_column": "ClientAuditId",
+          "destination_column": "ClientAuditId"
+        }
+      ],
+      "validation_pairs": [
+        [
+          "QC_Outcome",
+          "QC_Outcome"
+        ]
+      ],
+      "exclude_from_validation": [],
+      "normalization": {
+        "type": "text",
+        "trim": true,
+        "collapse_whitespace": true,
+        "case_insensitive": true
+      }
+    },
+    {
+      "client_id": "100",
+      "flow_id": "1",
+      "source_server": "ncsql46",
+      "source_database": "prod_Workflow_AetnaACAS",
+      "destination_server": "ncsql42",
+      "destination_database": "PI_EDWDDS",
+      "source_table": "dbo.Customvalues1",
+      "destination_table": "dbo.CustomvaluesQCTestBackup",
+      "fetch_mode": "custom_query",
+      "source_fetch_query": "SELECT a.ClientAuditId, cv.QC_Outcome, 100 AS ClientId, 1 AS FlowId FROM prod_Workflow_AetnaACAS.dbo.Audit (NOLOCK) a JOIN prod_Workflow_AetnaACAS.dbo.Customvalues1 cv (NOLOCK) ON a.id = cv.Audit_id WHERE cv.claimlineuid IS NULL AND cv.QC_Outcome IS NOT NULL",
+      "destination_fetch_query": "SELECT ClientAuditId, QC_Outcome FROM PI_EDWDDS.dbo.CustomvaluesQCTestBackup WITH (NOLOCK)",
+      "reference_keys": [
+        {
+          "name": "clientauditid",
+          "source_column": "ClientAuditId",
+          "destination_column": "ClientAuditId"
+        }
+      ],
+      "validation_pairs": [
+        [
+          "QC_Outcome",
+          "QC_Outcome"
+        ]
+      ],
+      "exclude_from_validation": [],
+      "normalization": {
+        "type": "text",
+        "trim": true,
+        "collapse_whitespace": true,
+        "case_insensitive": true
+      }
+    },
+    {
+      "client_id": "100",
+      "flow_id": "101",
+      "source_server": "ncsql46",
+      "source_database": "prod_Workflow_AetnaACAS",
+      "destination_server": "ncsql42",
+      "destination_database": "PI_EDWDDS",
+      "source_table": "dbo.Customvalues101",
+      "destination_table": "dbo.CustomvaluesQCTestBackup",
+      "fetch_mode": "custom_query",
+      "source_fetch_query": "SELECT a.ClientAuditId, cv.QC_Outcome, 100 AS ClientId, 101 AS FlowId FROM prod_Workflow_AetnaACAS.dbo.Audit (NOLOCK) a JOIN prod_Workflow_AetnaACAS.dbo.Customvalues101 cv (NOLOCK) ON a.id = cv.Audit_id WHERE cv.claimlineuid IS NULL AND cv.QC_Outcome IS NOT NULL",
+      "destination_fetch_query": "SELECT ClientAuditId, QC_Outcome FROM PI_EDWDDS.dbo.CustomvaluesQCTestBackup WITH (NOLOCK)",
+      "reference_keys": [
+        {
+          "name": "clientauditid",
+          "source_column": "ClientAuditId",
+          "destination_column": "ClientAuditId"
+        }
+      ],
+      "validation_pairs": [
+        [
+          "QC_Outcome",
+          "QC_Outcome"
+        ]
+      ],
+      "exclude_from_validation": [],
+      "normalization": {
+        "type": "text",
+        "trim": true,
+        "collapse_whitespace": true,
+        "case_insensitive": true
+      }
+    }
+  ]
+}
