@@ -1,0 +1,745 @@
+{
+  "_job_setup_guide": {
+    "_note": "Documentation only \u2014 validate.py does NOT read this block. Edit the sections below for each new job.",
+    "run_commands": [
+      "python validate.py --config config.json",
+      "python export.py --config config.json"
+    ],
+    "full_documentation": "See README.md and the module docstring at the top of validate.py",
+    "checklist_new_job": {
+      "1_servers": "Add or update server aliases under 'servers' (driver, server hostname, auth).",
+      "2_log_target": "Set log_server, log_database, log_table where ValidationLog2 rows are written.",
+      "3_clients_block": "One entry per job under 'clients' \u2014 this is the main job definition:",
+      "3a_client_id_flow_id": "client_id, flow_id",
+      "3b_connections": "source_server, source_database, destination_server, destination_database",
+      "3c_tables": "source_table, destination_table (used in logs only for custom_query mode)",
+      "3d_fetch_mode": "Set fetch_mode to 'custom_query' when using SQL below",
+      "3e_source_fetch_query": "List columns to validate in SELECT order (after join key + ClientID + AuditId). 3 value columns in query = 3 validations automatically.",
+      "3f_destination_fetch_query": "Same count/order of validation columns as source. Put extra non-validated columns in exclude_from_validation.",
+      "3g_reference_keys": "Join key only (usually ClientAuditId on both sides)",
+      "3h_exclude_from_validation": "Optional \u2014 destination/source columns in query but NOT compared (e.g. ClaimLineUID)",
+      "3i_normalization": "type: numeric for money/decimals, text for strings, date for dates",
+      "4_optional_validation_pairs": "Only if source/dest columns cannot be paired by SELECT order \u2014 explicit [[source, dest], ...] in clients[]",
+      "5_options_single_pass": "Keep single_pass_custom_query: true for multiple columns on same queries (faster)",
+      "6_identity_fallbacks": "Only if column names differ \u2014 update identity.source_column_fallbacks / destination_column_fallbacks"
+    },
+    "usually_leave_unchanged": [
+      "mappings section (not needed \u2014 auto-built from fetch queries)",
+      "options.log_granularity (per_key = one log row per audit)",
+      "options.log_matches (false = only log problems)",
+      "queries section (SQL templates for table mode, not custom_query jobs)",
+      "normalization_defaults (job-level override in clients[].normalization)",
+      "validate.py and export.py (Python engine \u2014 no edit needed per job)"
+    ],
+    "current_job_example": "Client 80, Flow 303, 3 overpayment columns, join on ClientAuditId, numeric compare"
+  },
+  "batch_size": 25000,
+  "query_timeout_seconds": 600,
+  "log_table": "dbo.DataMigrationDetailsByPyToolForQC_OUTCOME",
+  "log_server": "ncsql38",
+  "log_database": "PI_EDWLogs",
+  "options": {
+    "use_nolock": true,
+    "log_matches": false,
+    "log_granularity": "per_key",
+    "log_flush_every": 5000,
+    "single_pass_custom_query": true,
+    "log_preload_progress": false,
+    "check_orphans_in_destination": false,
+    "fix_blanks": true,
+    "fix_mismatches": true,
+    "preload_fetch_size": 20000,
+    "preload_progress_every": 200000,
+    "temp_key_column_type": "NVARCHAR(500)",
+    "warn_on_duplicate_keys": true,
+    "cast_temp_keys_for_join": true
+  },
+  "queries": {
+    "source_key_batch": "SELECT TOP ({batch_size}) {columns} FROM {table} {nolock_hint} {where} ORDER BY {order_by} ASC",
+    "destination_preload": "SELECT {columns} FROM {table} {nolock_hint} {where}",
+    "batch_row_fetch": "SELECT {select_columns} FROM {table} t {nolock_hint} JOIN {temp_table} tmp ON {join_condition}",
+    "destination_update": "UPDATE {table} SET {column} = ? WHERE {where}",
+    "temp_table_create": "CREATE TABLE {temp_table} ({column_defs})",
+    "temp_table_truncate": "TRUNCATE TABLE {temp_table}",
+    "temp_table_drop": "DROP TABLE {temp_table}",
+    "temp_table_insert": "INSERT INTO {temp_table} ({columns}) VALUES ({placeholders})",
+    "exception_report": "SELECT client_id, flow_id, audit_id, client_audit_id, source_table, source_column, destination_table, destination_column, issue_type, value_status, join_key_status, key_value, source_value, destination_value, exception_reason, batch_number, log_time, details FROM {log_table} WHERE run_id = ? AND issue_type NOT IN ({exclude_issue_types}) ORDER BY client_id, flow_id, source_table, source_column"
+  },
+  "identity": {
+    "primary_key_patterns": [
+      "^client_?audit_?id$",
+      "^client_?id$",
+      "^audit_?id$"
+    ],
+    "client_id_patterns": [
+      "^client_?id$",
+      "^client_?key$"
+    ],
+    "flow_id_patterns": [
+      "^flow_?id$"
+    ],
+    "audit_id_patterns": [
+      "^audit_?id$",
+      "^auditid$"
+    ],
+    "client_audit_id_patterns": [
+      "^client_?audit_?id$",
+      "^clientauditid$"
+    ],
+    "source_column_fallbacks": {
+      "client_id": [
+        "ClientID",
+        "ClientId",
+        "client_id",
+        "CLIENTID"
+      ],
+      "audit_id": [
+        "AuditId",
+        "Audit_id",
+        "AuditID",
+        "audit_id",
+        "AUDITID"
+      ],
+      "client_audit_id": [
+        "ClientAuditId",
+        "ClientAuditID"
+      ]
+    },
+    "destination_column_fallbacks": {
+      "client_id": [
+        "ClientID",
+        "ClientId",
+        "client_id",
+        "CLIENTID"
+      ],
+      "audit_id": [
+        "AuditId",
+        "Audit_id",
+        "AuditID",
+        "audit_id",
+        "AUDITID"
+      ],
+      "client_audit_id": [
+        "ClientAuditId",
+        "ClientAuditID"
+      ]
+    }
+  },
+  "normalization_defaults": {
+    "type": "numeric",
+    "trim": true,
+    "collapse_whitespace": true,
+    "case_insensitive": true
+  },
+  "date_formats": {
+    "_note": "// NOT IN USE - enable when comparing date columns",
+    "enabled": false,
+    "formats": [
+      "%Y-%m-%d",
+      "%Y-%m-%d %H:%M:%S",
+      "%m/%d/%Y",
+      "%m/%d/%Y %H:%M:%S",
+      "%d/%m/%Y",
+      "%Y%m%d",
+      "%Y-%m-%dT%H:%M:%S"
+    ]
+  },
+  "_features_not_in_use": {
+    "date_filter": "// NOT IN USE - filter source/destination keys by date column",
+    "fetch_mode_table": "// NOT IN USE - direct table read instead of custom_query",
+    "preload_destination_rows": "// NOT IN USE - only for table fetch mode, not custom_query",
+    "insert_custom_query": "// NOT IN USE - insert/update with custom_query fetch not supported yet",
+    "check_orphans_in_destination": "// NOT IN USE - set options.check_orphans_in_destination true to enable"
+  },
+  "servers": {
+    "sql07": {
+      "driver": "ODBC Driver 17 for SQL Server",
+      "server": "sql07",
+      "auth": "windows"
+    },
+    "ncsql90": {
+      "driver": "ODBC Driver 17 for SQL Server",
+      "server": "ncsql90",
+      "auth": "windows"
+    },
+    "ncsql88": {
+      "driver": "ODBC Driver 17 for SQL Server",
+      "server": "ncsql88",
+      "auth": "windows"
+    },
+    "ncsql38": {
+      "driver": "ODBC Driver 17 for SQL Server",
+      "server": "ncsql38",
+      "auth": "windows"
+    }
+  },
+  "client_defaults": {
+    "destination_server": "ncsql38",
+    "destination_database": "PI_EDWDDS",
+    "destination_table": "dbo.Customvalues",
+    "fetch_mode": "custom_query",
+    "source_table": "dbo.Customvalues{flow_id}",
+    "source_fetch_query": "SELECT a.ClientAuditId, cv.{mapped_column} FROM {source_database}.dbo.Audit (NOLOCK) a JOIN {source_database}.dbo.Customvalues{flow_id} cv (NOLOCK) ON a.id = cv.Audit_id WHERE cv.claimlineuid IS NULL AND cv.{mapped_column} IS NOT NULL",
+    "destination_fetch_query": "SELECT ClientAuditId, QC_Outcome FROM PI_EDWDDS.dbo.Customvalues WITH (NOLOCK)",
+    "reference_keys": [
+      {
+        "name": "clientauditid",
+        "source_column": "ClientAuditId",
+        "destination_column": "ClientAuditId"
+      }
+    ],
+    "validation_pairs": [
+      [
+        "QC_Outcome",
+        "QC_Outcome"
+      ]
+    ],
+    "exclude_from_validation": [],
+    "normalization": {
+      "type": "text",
+      "trim": true,
+      "collapse_whitespace": true,
+      "case_insensitive": true
+    }
+  },
+  "clients": [
+    {
+      "client_id": "112",
+      "flow_id": "1",
+      "source_server": "ncsql90",
+      "source_database": "Workflow_UMR",
+      "mapped_column": "QC_Outcome"
+    },
+    {
+      "client_id": "80",
+      "flow_id": "1",
+      "source_server": "ncsql90",
+      "source_database": "Workflow_UHCUNet",
+      "mapped_column": "QC_Outcome"
+    },
+    {
+      "client_id": "80",
+      "flow_id": "101",
+      "source_server": "ncsql90",
+      "source_database": "Workflow_UHCUNet",
+      "mapped_column": "QC_Outcome"
+    },
+    {
+      "client_id": "80",
+      "flow_id": "202",
+      "source_server": "ncsql90",
+      "source_database": "Workflow_UHCUNet",
+      "mapped_column": "QC_Outcome"
+    },
+    {
+      "client_id": "80",
+      "flow_id": "303",
+      "source_server": "ncsql90",
+      "source_database": "Workflow_UHCUNet",
+      "mapped_column": "QC_Outcome"
+    },
+    {
+      "client_id": "80",
+      "flow_id": "404",
+      "source_server": "ncsql90",
+      "source_database": "Workflow_UHCUNet",
+      "mapped_column": "QC_Outcome"
+    },
+    {
+      "client_id": "80",
+      "flow_id": "606",
+      "source_server": "ncsql90",
+      "source_database": "Workflow_UHCUNet",
+      "mapped_column": "QC_Outcome"
+    },
+    {
+      "client_id": "80",
+      "flow_id": "707",
+      "source_server": "ncsql90",
+      "source_database": "Workflow_UHCUNet",
+      "mapped_column": "QC_Outcome"
+    },
+    {
+      "client_id": "105",
+      "flow_id": "1",
+      "source_server": "ncsql90",
+      "source_database": "Workflow_UHCCirrus",
+      "mapped_column": "QC_Outcome"
+    },
+    {
+      "client_id": "105",
+      "flow_id": "202",
+      "source_server": "ncsql90",
+      "source_database": "Workflow_UHCCirrus",
+      "mapped_column": "QC_Outcome_00",
+      "validation_pairs": [
+        [
+          "QC_Outcome_00",
+          "QC_Outcome"
+        ]
+      ]
+    },
+    {
+      "client_id": "105",
+      "flow_id": "303",
+      "source_server": "ncsql90",
+      "source_database": "Workflow_UHCCirrus",
+      "mapped_column": "QC_Outcome"
+    },
+    {
+      "client_id": "105",
+      "flow_id": "404",
+      "source_server": "ncsql90",
+      "source_database": "Workflow_UHCCirrus",
+      "mapped_column": "QC_Outcome"
+    },
+    {
+      "client_id": "127",
+      "flow_id": "101",
+      "source_server": "ncsql90",
+      "source_database": "Workflow_UHCCSPOffshore",
+      "mapped_column": "QC_Outcome"
+    },
+    {
+      "client_id": "127",
+      "flow_id": "202",
+      "source_server": "ncsql90",
+      "source_database": "Workflow_UHCCSPOffshore",
+      "mapped_column": "QC_Outcome"
+    },
+    {
+      "client_id": "127",
+      "flow_id": "303",
+      "source_server": "ncsql90",
+      "source_database": "Workflow_UHCCSPOffshore",
+      "mapped_column": "QC_Outcome"
+    },
+    {
+      "client_id": "117",
+      "flow_id": "1",
+      "source_server": "ncsql90",
+      "source_database": "Workflow_OptumCare",
+      "mapped_column": "QC_Outcome"
+    },
+    {
+      "client_id": "33",
+      "flow_id": "202",
+      "source_server": "ncsql90",
+      "source_database": "Workflow_EssenceHealth",
+      "mapped_column": "QC_Outcome"
+    },
+    {
+      "client_id": "33",
+      "flow_id": "303",
+      "source_server": "ncsql90",
+      "source_database": "Workflow_EssenceHealth",
+      "mapped_column": "QC_Outcome"
+    },
+    {
+      "client_id": "33",
+      "flow_id": "404",
+      "source_server": "ncsql90",
+      "source_database": "Workflow_EssenceHealth",
+      "mapped_column": "QC_Outcome"
+    },
+    {
+      "client_id": "33",
+      "flow_id": "505",
+      "source_server": "ncsql90",
+      "source_database": "Workflow_EssenceHealth",
+      "mapped_column": "QC_Outcome"
+    },
+    {
+      "client_id": "33",
+      "flow_id": "606",
+      "source_server": "ncsql90",
+      "source_database": "Workflow_EssenceHealth",
+      "mapped_column": "QC_Outcome"
+    },
+    {
+      "client_id": "134",
+      "flow_id": "1",
+      "source_server": "sql07",
+      "source_database": "Workflow_Point32Health",
+      "mapped_column": "QC_Outcome"
+    },
+    {
+      "client_id": "134",
+      "flow_id": "101",
+      "source_server": "sql07",
+      "source_database": "Workflow_Point32Health",
+      "mapped_column": "QC_Outcome"
+    },
+    {
+      "client_id": "134",
+      "flow_id": "202",
+      "source_server": "sql07",
+      "source_database": "Workflow_Point32Health",
+      "mapped_column": "QC_Outcome"
+    },
+    {
+      "client_id": "78",
+      "flow_id": "202",
+      "source_server": "sql07",
+      "source_database": "Workflow_OptumRxPrepay",
+      "mapped_column": "QC_Outcome"
+    },
+    {
+      "client_id": "108",
+      "flow_id": "1",
+      "source_server": "sql07",
+      "source_database": "Workflow_HumanaProfessionalPrepay",
+      "mapped_column": "QC_Outcome"
+    },
+    {
+      "client_id": "98",
+      "flow_id": "1",
+      "source_server": "sql07",
+      "source_database": "Workflow_HumanaPrepaySNF",
+      "mapped_column": "QC_Outcome"
+    },
+    {
+      "client_id": "84",
+      "flow_id": "1",
+      "source_server": "sql07",
+      "source_database": "Workflow_HumanaPrepayHCD",
+      "mapped_column": "QC_Outcome"
+    },
+    {
+      "client_id": "103",
+      "flow_id": "1",
+      "source_server": "sql07",
+      "source_database": "Workflow_HumanaPrepayImplants",
+      "mapped_column": "QC_Outcome"
+    },
+    {
+      "client_id": "87",
+      "flow_id": "1",
+      "source_server": "sql07",
+      "source_database": "Workflow_HumanaPrepayDRGSS",
+      "mapped_column": "QC_Outcome"
+    },
+    {
+      "client_id": "89",
+      "flow_id": "1",
+      "source_server": "sql07",
+      "source_database": "Workflow_HumanaPrepayDME",
+      "mapped_column": "QC_Outcome"
+    },
+    {
+      "client_id": "86",
+      "flow_id": "1",
+      "source_server": "sql07",
+      "source_database": "Workflow_HumanaPrepayCVIR",
+      "mapped_column": "QC_Outcome"
+    },
+    {
+      "client_id": "102",
+      "flow_id": "1",
+      "source_server": "sql07",
+      "source_database": "Workflow_HumanaPrepayAPC",
+      "mapped_column": "QC_Outcome"
+    },
+    {
+      "client_id": "77",
+      "flow_id": "101",
+      "source_server": "sql07",
+      "source_database": "Workflow_HumanaPrePay",
+      "mapped_column": "QC_Outcome"
+    },
+    {
+      "client_id": "77",
+      "flow_id": "1",
+      "source_server": "sql07",
+      "source_database": "Workflow_HumanaPrePay",
+      "mapped_column": "QC_Outcome"
+    },
+    {
+      "client_id": "37",
+      "flow_id": "202",
+      "source_server": "sql07",
+      "source_database": "Workflow_HumanaAssignment",
+      "mapped_column": "QC_Outcome"
+    },
+    {
+      "client_id": "1",
+      "flow_id": "101",
+      "source_server": "sql07",
+      "source_database": "Workflow_Humana",
+      "mapped_column": "QC_Outcome"
+    },
+    {
+      "client_id": "1",
+      "flow_id": "202",
+      "source_server": "sql07",
+      "source_database": "Workflow_Humana",
+      "mapped_column": "QC_Outcome"
+    },
+    {
+      "client_id": "1",
+      "flow_id": "404",
+      "source_server": "sql07",
+      "source_database": "Workflow_Humana",
+      "mapped_column": "QC_Outcome"
+    },
+    {
+      "client_id": "1",
+      "flow_id": "606",
+      "source_server": "sql07",
+      "source_database": "Workflow_Humana",
+      "mapped_column": "QC_Outcome"
+    },
+    {
+      "client_id": "1",
+      "flow_id": "707",
+      "source_server": "sql07",
+      "source_database": "Workflow_Humana",
+      "mapped_column": "QC_Outcome"
+    },
+    {
+      "client_id": "1",
+      "flow_id": "1212",
+      "source_server": "sql07",
+      "source_database": "Workflow_Humana",
+      "mapped_column": "QC_Outcome"
+    },
+    {
+      "client_id": "1",
+      "flow_id": "1313",
+      "source_server": "sql07",
+      "source_database": "Workflow_Humana",
+      "mapped_column": "QC_Outcome"
+    },
+    {
+      "client_id": "1",
+      "flow_id": "1414",
+      "source_server": "sql07",
+      "source_database": "Workflow_Humana",
+      "mapped_column": "QC_Outcome"
+    },
+    {
+      "client_id": "1",
+      "flow_id": "1515",
+      "source_server": "sql07",
+      "source_database": "Workflow_Humana",
+      "mapped_column": "QC_Outcome"
+    },
+    {
+      "client_id": "1",
+      "flow_id": "1616",
+      "source_server": "sql07",
+      "source_database": "Workflow_Humana",
+      "mapped_column": "QC_Outcome"
+    },
+    {
+      "client_id": "1",
+      "flow_id": "1717",
+      "source_server": "sql07",
+      "source_database": "Workflow_Humana",
+      "mapped_column": "QC_Outcome"
+    },
+    {
+      "client_id": "133",
+      "flow_id": "1",
+      "source_server": "sql07",
+      "source_database": "Workflow_Highmark2Offshore",
+      "mapped_column": "QC_Outcome"
+    },
+    {
+      "client_id": "133",
+      "flow_id": "101",
+      "source_server": "sql07",
+      "source_database": "Workflow_Highmark2Offshore",
+      "mapped_column": "QC_Outcome"
+    },
+    {
+      "client_id": "133",
+      "flow_id": "202",
+      "source_server": "sql07",
+      "source_database": "Workflow_Highmark2Offshore",
+      "mapped_column": "QC_Outcome"
+    },
+    {
+      "client_id": "133",
+      "flow_id": "505",
+      "source_server": "sql07",
+      "source_database": "Workflow_Highmark2Offshore",
+      "mapped_column": "QC_Outcome"
+    },
+    {
+      "client_id": "133",
+      "flow_id": "606",
+      "source_server": "sql07",
+      "source_database": "Workflow_Highmark2Offshore",
+      "mapped_column": "QC_Outcome"
+    },
+    {
+      "client_id": "133",
+      "flow_id": "707",
+      "source_server": "sql07",
+      "source_database": "Workflow_Highmark2Offshore",
+      "mapped_column": "QC_Outcome"
+    },
+    {
+      "client_id": "131",
+      "flow_id": "1",
+      "source_server": "sql07",
+      "source_database": "Workflow_HighMark2",
+      "mapped_column": "QC_Outcome"
+    },
+    {
+      "client_id": "131",
+      "flow_id": "202",
+      "source_server": "sql07",
+      "source_database": "Workflow_HighMark2",
+      "mapped_column": "QC_Outcome"
+    },
+    {
+      "client_id": "97",
+      "flow_id": "1",
+      "source_server": "sql07",
+      "source_database": "Workflow_HealthSun",
+      "mapped_column": "QC_Outcome"
+    },
+    {
+      "client_id": "129",
+      "flow_id": "1",
+      "source_server": "sql07",
+      "source_database": "Workflow_DevotedHealthPrepay",
+      "mapped_column": "QC_Outcome"
+    },
+    {
+      "client_id": "129",
+      "flow_id": "101",
+      "source_server": "sql07",
+      "source_database": "Workflow_DevotedHealthPrepay",
+      "mapped_column": "QC_Outcome"
+    },
+    {
+      "client_id": "129",
+      "flow_id": "202",
+      "source_server": "sql07",
+      "source_database": "Workflow_DevotedHealthPrepay",
+      "mapped_column": "QC_Outcome"
+    },
+    {
+      "client_id": "129",
+      "flow_id": "303",
+      "source_server": "sql07",
+      "source_database": "Workflow_DevotedHealthPrepay",
+      "mapped_column": "QC_Outcome"
+    },
+    {
+      "client_id": "111",
+      "flow_id": "101",
+      "source_server": "sql07",
+      "source_database": "Workflow_DevotedHealth",
+      "mapped_column": "QC_Outcome"
+    },
+    {
+      "client_id": "111",
+      "flow_id": "303",
+      "source_server": "sql07",
+      "source_database": "Workflow_DevotedHealth",
+      "mapped_column": "QC_Outcome"
+    },
+    {
+      "client_id": "111",
+      "flow_id": "404",
+      "source_server": "sql07",
+      "source_database": "Workflow_DevotedHealth",
+      "mapped_column": "QC_Outcome"
+    },
+    {
+      "client_id": "111",
+      "flow_id": "505",
+      "source_server": "sql07",
+      "source_database": "Workflow_DevotedHealth",
+      "mapped_column": "QC_Outcome"
+    },
+    {
+      "client_id": "111",
+      "flow_id": "606",
+      "source_server": "sql07",
+      "source_database": "Workflow_DevotedHealth",
+      "mapped_column": "QC_Outcome"
+    },
+    {
+      "client_id": "111",
+      "flow_id": "707",
+      "source_server": "sql07",
+      "source_database": "Workflow_DevotedHealth",
+      "mapped_column": "QC_Outcome"
+    },
+    {
+      "client_id": "111",
+      "flow_id": "808",
+      "source_server": "sql07",
+      "source_database": "Workflow_DevotedHealth",
+      "mapped_column": "QC_Outcome"
+    },
+    {
+      "client_id": "111",
+      "flow_id": "909",
+      "source_server": "sql07",
+      "source_database": "Workflow_DevotedHealth",
+      "mapped_column": "QC_Outcome"
+    },
+    {
+      "client_id": "111",
+      "flow_id": "1212",
+      "source_server": "sql07",
+      "source_database": "Workflow_DevotedHealth",
+      "mapped_column": "QC_Outcome"
+    },
+    {
+      "client_id": "111",
+      "flow_id": "1313",
+      "source_server": "sql07",
+      "source_database": "Workflow_DevotedHealth",
+      "mapped_column": "QC_Outcome"
+    },
+    {
+      "client_id": "111",
+      "flow_id": "1414",
+      "source_server": "sql07",
+      "source_database": "Workflow_DevotedHealth",
+      "mapped_column": "QC_Outcome"
+    },
+    {
+      "client_id": "3",
+      "flow_id": "101",
+      "source_server": "sql07",
+      "source_database": "Workflow_ColoradoAccess",
+      "mapped_column": "QC_Outcome"
+    },
+    {
+      "client_id": "96",
+      "flow_id": "1",
+      "source_server": "ncsql88",
+      "source_database": "Workflow_AetnaHRP",
+      "mapped_column": "QC_Outcome"
+    },
+    {
+      "client_id": "96",
+      "flow_id": "101",
+      "source_server": "ncsql88",
+      "source_database": "Workflow_AetnaHRP",
+      "mapped_column": "QC_Outcome"
+    },
+    {
+      "client_id": "100",
+      "flow_id": "1",
+      "source_server": "ncsql88",
+      "source_database": "Workflow_AetnaACAS",
+      "mapped_column": "QC_Outcome"
+    },
+    {
+      "client_id": "100",
+      "flow_id": "101",
+      "source_server": "ncsql88",
+      "source_database": "Workflow_AetnaACAS",
+      "mapped_column": "QC_Outcome"
+    }
+  ]
+}
