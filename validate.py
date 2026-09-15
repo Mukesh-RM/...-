@@ -1450,6 +1450,82 @@ class BatchKeyMatcher:
             pass
 
 
+class BatchUpdater:
+    """
+    FIX (see chat): insert used to run one UPDATE ... WHERE key = ? statement
+    PER ROW, each committed individually. Without an index on the join
+    column, every single one of those does a full table scan of the
+    destination table -- thousands of full scans for a batch that should
+    take one. This class pushes an entire batch's (key, new_value) pairs
+    into one reusable #temp table, then updates them all in a single
+    UPDATE ... FROM ... JOIN statement -- one scan per batch instead of
+    one scan per row, mirroring the same trick BatchKeyMatcher already
+    uses for reads.
+
+    Does NOT remove the need for an index on the destination join column
+    for best performance -- it reduces the number of scans, it doesn't
+    make each scan itself cheap. Use both if possible.
+    """
+
+    def __init__(self, conn, ref_dest_cols, runtime_cfg):
+        self.conn = conn
+        self.ref_dest_cols = ref_dest_cols
+        self.runtime_cfg = runtime_cfg
+        self.tmp_name = f"#upd_{uuid.uuid4().hex[:8]}"
+        self.key_cols = [f"k{i}" for i in range(len(ref_dest_cols))]
+        key_col_type = runtime_cfg.option("temp_key_column_type")
+        column_defs = ", ".join(f"{c} {key_col_type}" for c in self.key_cols)
+        column_defs += ", new_value NVARCHAR(MAX)"
+        cur = conn.cursor()
+        cur.execute(f"CREATE TABLE {self.tmp_name} ({column_defs})")
+        self.conn.commit()
+
+    def apply(self, dst_table, dst_col, pending):
+        """pending: list of (key_tuple, new_value). Runs ONE UPDATE...JOIN
+        for the whole list. Returns the number of rows actually updated."""
+        if not pending:
+            return 0
+
+        cur = self.conn.cursor()
+        cur.execute(f"TRUNCATE TABLE {self.tmp_name}")
+        cur.fast_executemany = True
+        placeholders = ", ".join("?" for _ in self.key_cols) + ", ?"
+        insert_sql = (
+            f"INSERT INTO {self.tmp_name} ({', '.join(self.key_cols)}, new_value) "
+            f"VALUES ({placeholders})"
+        )
+        cur.executemany(
+            insert_sql,
+            [tuple(str(v) for v in key) + (None if val is None else str(val),) for key, val in pending],
+        )
+
+        cast_for_join = self.runtime_cfg.option("cast_temp_keys_for_join")
+        join_parts = []
+        for i, col in enumerate(self.ref_dest_cols):
+            if cast_for_join:
+                join_parts.append(f"CAST(t.{col} AS NVARCHAR(500)) = tmp.{self.key_cols[i]}")
+            else:
+                join_parts.append(f"t.{col} = tmp.{self.key_cols[i]}")
+        join_cond = " AND ".join(join_parts)
+
+        update_sql = (
+            f"UPDATE t SET t.{dst_col} = tmp.new_value "
+            f"FROM {dst_table} t JOIN {self.tmp_name} tmp ON {join_cond}"
+        )
+        cur.execute(update_sql)
+        rowcount = cur.rowcount
+        self.conn.commit()
+        return rowcount
+
+    def close(self):
+        try:
+            cur = self.conn.cursor()
+            cur.execute(f"DROP TABLE {self.tmp_name}")
+            self.conn.commit()
+        except Exception:
+            pass
+
+
 def fetch_all_rows_by_keys(conn, table, key_columns, data_columns, runtime_cfg, progress_cb=None):
     if not key_columns:
         return {}
@@ -2784,52 +2860,65 @@ def _insert_custom_query_batch(pool, audit, mappings, catalog, runtime_cfg):
     updated_count, skipped_count = 0, 0
     batch_number = 0
 
+    # FIX: batched writes instead of one UPDATE + one commit per row (see
+    # BatchUpdater docstring). One updater is reused for the whole client's
+    # run and closed at the end, same lifecycle as BatchKeyMatcher.
+    updater = BatchUpdater(dst_conn, ref_dest_cols, runtime_cfg)
+
     log.info(
         f"[client={client_id} flow={flow_id}] Custom-query insert: "
         f"{len(all_source_keys)} keys x {len(per_mapping)} column(s)"
     )
 
-    for batch_start in range(0, len(all_source_keys), batch_size):
-        batch_number += 1
-        batch_keys = all_source_keys[batch_start:batch_start + batch_size]
+    try:
+        for batch_start in range(0, len(all_source_keys), batch_size):
+            batch_number += 1
+            batch_keys = all_source_keys[batch_start:batch_start + batch_size]
 
-        for key in batch_keys:
-            key_primary_value, key_map, key_context_json = build_key_context(
-                ref_source_cols, key, runtime_cfg
-            )
-            internal = getattr(audit, "internal", None)
-            if internal and internal.enabled:
-                tr = internal._trackers.get(audit.stage)
-                if tr:
-                    tr.record_insert_key_seen()
+            # One pending list per validated column -- different columns can
+            # need different subsets of rows updated within the same batch.
+            pending_by_col = {id(pm): [] for pm in per_mapping}
+            # Row context saved so we can log AFTER the batched UPDATE
+            # actually runs, instead of before -- if the UPDATE fails we
+            # want a batch-level error, not thousands of false "UPDATED" logs.
+            log_ctx_by_col = {id(pm): [] for pm in per_mapping}
 
-            src_row = source_rows_cache.get(key)
-            dst_row = destination_rows_cache.get(key)
-            row_client_id, row_flow_id, row_audit_id, row_client_audit_id = build_row_log_identity(
-                key_map, client_id, flow_id, runtime_cfg,
-                src_row=src_row, dst_row=dst_row, key_primary_value=key_primary_value,
-            )
+            for key in batch_keys:
+                key_primary_value, key_map, key_context_json = build_key_context(
+                    ref_source_cols, key, runtime_cfg
+                )
+                internal = getattr(audit, "internal", None)
+                if internal and internal.enabled:
+                    tr = internal._trackers.get(audit.stage)
+                    if tr:
+                        tr.record_insert_key_seen()
 
-            ids = {
-                "client_id": row_client_id, "flow_id": row_flow_id,
-                "audit_id": row_audit_id, "client_audit_id": row_client_audit_id,
-            }
+                src_row = source_rows_cache.get(key)
+                dst_row = destination_rows_cache.get(key)
+                row_client_id, row_flow_id, row_audit_id, row_client_audit_id = build_row_log_identity(
+                    key_map, client_id, flow_id, runtime_cfg,
+                    src_row=src_row, dst_row=dst_row, key_primary_value=key_primary_value,
+                )
 
-            if src_row is None or dst_row is None:
+                ids = {
+                    "client_id": row_client_id, "flow_id": row_flow_id,
+                    "audit_id": row_audit_id, "client_audit_id": row_client_audit_id,
+                }
+
+                if src_row is None or dst_row is None:
+                    for pm in per_mapping:
+                        _log_insert_decision(
+                            audit, runtime_cfg, ids, key_primary_value,
+                            pm["src_col"], pm["dst_col"],
+                            _row_get(src_row, pm["src_col"]) if src_row else None,
+                            _row_get(dst_row, pm["dst_col"]) if dst_row else None,
+                            "SKIPPED", "missing_source_or_destination_row",
+                            batch_number, key_context_json,
+                        )
+                        skipped_count += 1
+                    continue
+
                 for pm in per_mapping:
-                    _log_insert_decision(
-                        audit, runtime_cfg, ids, key_primary_value,
-                        pm["src_col"], pm["dst_col"],
-                        _row_get(src_row, pm["src_col"]) if src_row else None,
-                        _row_get(dst_row, pm["dst_col"]) if dst_row else None,
-                        "SKIPPED", "missing_source_or_destination_row",
-                        batch_number, key_context_json,
-                    )
-                    skipped_count += 1
-                continue
-
-            for pm in per_mapping:
-                try:
                     src_val = _row_get(src_row, pm["src_col"])
                     dst_val = _row_get(dst_row, pm["dst_col"])
                     n_src = normalize_value(src_val, pm["norm_cfg"], runtime_cfg)
@@ -2838,14 +2927,9 @@ def _insert_custom_query_batch(pool, audit, mappings, catalog, runtime_cfg):
                         n_src, n_dst, fix_blanks, fix_mismatches,
                     )
                     if should_update:
-                        _execute_destination_update(
-                            dst_conn, dst_table, pm["dst_col"], ref_dest_cols, key, src_val, runtime_cfg,
-                        )
-                        updated_count += 1
-                        _log_insert_decision(
-                            audit, runtime_cfg, ids, key_primary_value,
-                            pm["src_col"], pm["dst_col"], src_val, dst_val,
-                            "UPDATED", update_reason, batch_number, key_context_json,
+                        pending_by_col[id(pm)].append((key, src_val))
+                        log_ctx_by_col[id(pm)].append(
+                            (ids, key_primary_value, src_val, dst_val, update_reason, key_context_json)
                         )
                     else:
                         skipped_count += 1
@@ -2855,16 +2939,34 @@ def _insert_custom_query_batch(pool, audit, mappings, catalog, runtime_cfg):
                             pm["src_col"], pm["dst_col"], src_val, dst_val,
                             "SKIPPED", skip_reason, batch_number, key_context_json,
                         )
+
+            # One batched UPDATE per column for this whole batch of keys,
+            # instead of one UPDATE per row.
+            for pm in per_mapping:
+                pending = pending_by_col[id(pm)]
+                if not pending:
+                    continue
+                try:
+                    updater.apply(dst_table, pm["dst_col"], pending)
+                    updated_count += len(pending)
+                    for ids, key_primary_value, src_val, dst_val, update_reason, key_context_json in log_ctx_by_col[id(pm)]:
+                        _log_insert_decision(
+                            audit, runtime_cfg, ids, key_primary_value,
+                            pm["src_col"], pm["dst_col"], src_val, dst_val,
+                            "UPDATED", update_reason, batch_number, key_context_json,
+                        )
                 except Exception as e:
                     audit.log(
-                        client_id=client_id, flow_id=flow_id, issue_type="ROW_ERROR",
+                        client_id=client_id, flow_id=flow_id, issue_type="BATCH_ERROR",
                         batch_number=batch_number,
                         source_column=pm["src_col"], destination_column=pm["dst_col"],
-                        details=f"Update error: {e}",
+                        details=f"Batched update failed for {len(pending)} row(s): {e}",
                     )
 
-        audit.flush()
-        log.info(f"[client={client_id} flow={flow_id}] Insert batch {batch_number}: processed {len(batch_keys)} keys")
+            audit.flush()
+            log.info(f"[client={client_id} flow={flow_id}] Insert batch {batch_number}: processed {len(batch_keys)} keys")
+    finally:
+        updater.close()
 
     log.info(
         f"[client={client_id} flow={flow_id}] Custom-query INSERT complete. "
@@ -3449,6 +3551,16 @@ def main():
                 f"Insert summary: scanned={s.get('total_column_checks')} "
                 f"updated={s.get('insert_updated_total')} skipped={s.get('insert_skipped_total')}"
             )
+
+        # FIX: INSERT just changed destination rows on the actual server, but
+        # CUSTOM_QUERY_CACHE / DESTINATION_PRELOAD_CACHE are in-memory and know
+        # nothing about that. Without clearing them, REVALIDATION would reuse
+        # the destination snapshot fetched back in the VALIDATION stage --
+        # i.e. it would validate against pre-insert data and never show the
+        # updates actually took effect. Clear both before revalidating.
+        CUSTOM_QUERY_CACHE.clear()
+        DESTINATION_PRELOAD_CACHE.clear()
+        log.info("Cleared in-memory query caches before revalidation so it reads post-insert data")
 
         log.info("--- STAGE 3: REVALIDATION ---")
         internal_logger.begin_stage("REVALIDATION", **stage_ctx)
