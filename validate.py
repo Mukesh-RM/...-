@@ -1390,6 +1390,18 @@ class BatchKeyMatcher:
             temp_table=self.tmp_name,
             column_defs=column_defs,
         ))
+        # FIX (see chat): without an index on the temp table's key columns,
+        # the JOIN below forces SQL Server to full-scan the DESTINATION
+        # table on every single batch (no index on either side of the
+        # join). That's invisible at ~90k destination rows but becomes
+        # ruinously slow at 24M+ rows -- thousands of full scans instead
+        # of thousands of index seeks. Index the temp table immediately
+        # after creating it so the optimizer can seek instead of scan.
+        index_cols = ", ".join(self.tmp_cols)
+        cur.execute(
+            f"CREATE CLUSTERED INDEX IX_{self.tmp_name.lstrip('#')} "
+            f"ON {self.tmp_name} ({index_cols})"
+        )
         self.conn.commit()
 
     def fetch_rows(self, table, data_columns, keys):
@@ -1870,9 +1882,57 @@ def _validate_custom_query_batch(pool, audit, mappings, catalog, runtime_cfg):
         log.info(f"[client={client_id}] Custom {label} query loaded {len(rows)} keys")
         return rows
 
+    # FIX (see chat): destination_fetch_query used to pull the WHOLE
+    # destination table (20M+ rows) unconditionally, even though we only
+    # ever need the handful of ClientAuditIds that source actually
+    # returned (often a few thousand). Load source first (already the
+    # order below), then scope the destination query down to exactly
+    # those keys via a chunked "IN (...)" filter, so destination only
+    # ever scans/returns rows we can actually use.
+    def _load_destination_filtered(conn, sql, source_keys):
+        cache_sql = sql + f"::keyfiltered::{len(source_keys)}"
+        cached = get_custom_query_cache("destination", client_id, cache_sql)
+        if cached is not None:
+            log.info(f"[client={client_id}] Reusing cached destination query ({len(cached)} keys)")
+            return cached
+
+        if not source_keys or len(ref_dest_cols) != 1:
+            # No source keys to filter by, or a composite key we don't
+            # special-case here -- fall back to the original unfiltered
+            # behavior rather than silently returning nothing.
+            return _load_side(conn, "destination", sql, "destination")
+
+        dest_col = ref_dest_cols[0]
+        # source_keys are 1-tuples like (12345,) since there's one ref key
+        flat_values = [k[0] for k in source_keys]
+        is_numeric = all(isinstance(v, (int, float)) and not isinstance(v, bool) for v in flat_values)
+
+        chunk_size = 2000  # keep each IN-list comfortably small
+        merged_rows = {}
+        log.info(
+            f"[client={client_id}] Running key-filtered destination fetch for "
+            f"{len(flat_values)} key(s) in chunks of {chunk_size}..."
+        )
+        for i in range(0, len(flat_values), chunk_size):
+            chunk_vals = flat_values[i:i + chunk_size]
+            if is_numeric:
+                in_list = ",".join(str(v) for v in chunk_vals)
+            else:
+                # escape single quotes for safety since these are inlined literals
+                in_list = ",".join("'" + str(v).replace("'", "''") + "'" for v in chunk_vals)
+            filtered_sql = f"SELECT * FROM ({sql}) AS base WHERE base.{dest_col} IN ({in_list})"
+            chunk_rows, _ = execute_custom_fetch_query(conn, filtered_sql, ref_dest_cols, runtime_cfg)
+            merged_rows.update(chunk_rows)
+
+        log.info(f"[client={client_id}] Key-filtered destination query loaded {len(merged_rows)} keys")
+        set_custom_query_cache("destination", client_id, cache_sql, merged_rows)
+        return merged_rows
+
     try:
         source_rows_cache = _load_side(src_conn, "source", source_query, "source")
-        destination_rows_cache = _load_side(dst_conn, "destination", destination_query, "destination")
+        destination_rows_cache = _load_destination_filtered(
+            dst_conn, destination_query, list(source_rows_cache.keys())
+        )
     except Exception as e:
         audit.log(client_id=client_id, flow_id=flow_id, issue_type="CONNECTION_ERROR",
                   details=f"Custom fetch query failed: {e}")
