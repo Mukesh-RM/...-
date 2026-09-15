@@ -1905,26 +1905,51 @@ def _validate_custom_query_batch(pool, audit, mappings, catalog, runtime_cfg):
         dest_col = ref_dest_cols[0]
         # source_keys are 1-tuples like (12345,) since there's one ref key
         flat_values = [k[0] for k in source_keys]
-        is_numeric = all(isinstance(v, (int, float)) and not isinstance(v, bool) for v in flat_values)
 
-        chunk_size = 2000  # keep each IN-list comfortably small
-        merged_rows = {}
+        # FIX (see chat): a large literal IN (...) list doesn't reliably use
+        # an index -- SQL Server's optimizer can choose a scan anyway once
+        # the list gets big, and compiling a 20k-value IN list has its own
+        # overhead. A #temp table + indexed JOIN gives the optimizer two
+        # real, indexed row sets to work with, which is far more reliable
+        # at this scale. Mirrors the same technique BatchKeyMatcher already
+        # uses for table-mode fetches, applied here to custom_query mode.
+        col_type = runtime_cfg.option("temp_key_column_type") or "NVARCHAR(500)"
+        cast_for_join = runtime_cfg.option("cast_temp_keys_for_join")
+        tmp_name = f"#dstkeys_{client_id}_{flow_id}".replace("-", "_")
+
+        cur = conn.cursor()
         log.info(
-            f"[client={client_id}] Running key-filtered destination fetch for "
-            f"{len(flat_values)} key(s) in chunks of {chunk_size}..."
+            f"[client={client_id}] Running temp-table-joined destination fetch for "
+            f"{len(flat_values)} key(s) via {tmp_name}..."
         )
-        for i in range(0, len(flat_values), chunk_size):
-            chunk_vals = flat_values[i:i + chunk_size]
-            if is_numeric:
-                in_list = ",".join(str(v) for v in chunk_vals)
-            else:
-                # escape single quotes for safety since these are inlined literals
-                in_list = ",".join("'" + str(v).replace("'", "''") + "'" for v in chunk_vals)
-            filtered_sql = f"SELECT * FROM ({sql}) AS base WHERE base.{dest_col} IN ({in_list})"
-            chunk_rows, _ = execute_custom_fetch_query(conn, filtered_sql, ref_dest_cols, runtime_cfg)
-            merged_rows.update(chunk_rows)
+        try:
+            cur.execute(f"CREATE TABLE {tmp_name} (k0 {col_type})")
+            cur.executemany(
+                f"INSERT INTO {tmp_name} (k0) VALUES (?)",
+                [(str(v),) for v in flat_values],
+            )
+            cur.execute(f"CREATE CLUSTERED INDEX IX_{tmp_name.lstrip('#')} ON {tmp_name} (k0)")
+            conn.commit()
 
-        log.info(f"[client={client_id}] Key-filtered destination query loaded {len(merged_rows)} keys")
+            join_col = f"CAST(base.{dest_col} AS {col_type})" if cast_for_join else f"base.{dest_col}"
+            filtered_sql = (
+                f"SELECT base.* FROM ({sql}) AS base "
+                f"JOIN {tmp_name} tmp ON {join_col} = tmp.k0"
+            )
+            merged_rows, _ = execute_custom_fetch_query(conn, filtered_sql, ref_dest_cols, runtime_cfg)
+        finally:
+            # This connection is reused across all 76 flows (ConnectionPool
+            # caches one connection per server+database), so an orphaned
+            # temp table here would still be sitting around for the next
+            # flow that reuses this same connection. Always try to drop it,
+            # even if CREATE/INSERT/INDEX failed partway.
+            try:
+                cur.execute(f"IF OBJECT_ID('tempdb..{tmp_name}') IS NOT NULL DROP TABLE {tmp_name}")
+                conn.commit()
+            except Exception:
+                pass
+
+        log.info(f"[client={client_id}] Temp-table-joined destination query loaded {len(merged_rows)} keys")
         set_custom_query_cache("destination", client_id, cache_sql, merged_rows)
         return merged_rows
 
