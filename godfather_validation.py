@@ -823,6 +823,30 @@ def fetch_custom_query_side(conn, side, sql, ref_cols, client_id, runtime_cfg, l
     return rows
 
 
+def _detect_column_sql_type(conn, select_sql, column_name):
+    """Ask SQL Server what type `column_name` actually is in the result set
+    of `select_sql`, without executing it, via
+    sys.dm_exec_describe_first_result_set. Returns a ready-to-use SQL type
+    string (e.g. 'int', 'varchar(50)', 'decimal(18,2)') or None if it can't
+    be determined (permission issue, a query shape the DMF can't describe,
+    etc). This is what lets the temp-table key filter match whatever
+    destination_fetch_query/reference_keys a given client config defines,
+    with no per-client type hints needed in config.json."""
+    cur = conn.cursor()
+    try:
+        cur.execute(
+            "SELECT name, system_type_name FROM "
+            "sys.dm_exec_describe_first_result_set(?, NULL, 0)",
+            select_sql,
+        )
+        for name, system_type_name in cur.fetchall():
+            if name and name.lower() == column_name.lower():
+                return system_type_name
+    except Exception as e:
+        log.warning(f"Could not auto-detect SQL type for column '{column_name}': {e}")
+    return None
+
+
 def fetch_destination_filtered_by_keys(conn, sql, ref_dest_cols, source_keys, client_id, flow_id,
                                         runtime_cfg, cache_label_suffix=""):
     """
@@ -868,8 +892,31 @@ def fetch_destination_filtered_by_keys(conn, sql, ref_dest_cols, source_keys, cl
     # source_keys are 1-tuples like (12345,) since there's one ref key
     flat_values = [k[0] for k in source_keys]
 
-    col_type = runtime_cfg.option("temp_key_column_type") or "NVARCHAR(500)"
-    cast_for_join = runtime_cfg.option("cast_temp_keys_for_join")
+    # FIX (see chat): col_type/cast_for_join used to come straight from
+    # config.json, fixed for every client/flow. Casting base.{dest_col} to
+    # that fixed type made the JOIN non-sargable -- SQL Server couldn't use
+    # any index on dest_col, so it fell back to scanning (and casting)
+    # every row of the destination table, which is exactly the 20M+ row
+    # full-table read this function was written to avoid. Detecting the
+    # column's real type at runtime and matching it means no cast is
+    # needed on either side of the join, so it stays index-seekable no
+    # matter which client/flow/destination table this runs against.
+    detected_type = _detect_column_sql_type(conn, sql, dest_col)
+    if detected_type:
+        col_type = detected_type
+        cast_for_join = False
+        log.info(
+            f"[client={client_id}] Auto-detected type for {dest_col}: "
+            f"{col_type} (join will not need a cast)"
+        )
+    else:
+        col_type = runtime_cfg.option("temp_key_column_type") or "NVARCHAR(500)"
+        cast_for_join = runtime_cfg.option("cast_temp_keys_for_join")
+        log.warning(
+            f"[client={client_id}] Auto-detect failed for {dest_col}; falling back to "
+            f"config temp_key_column_type={col_type} cast_temp_keys_for_join={cast_for_join} "
+            "(join may not be sargable)"
+        )
     tmp_name = f"#dstkeys_{client_id}_{flow_id}".replace("-", "_")
 
     cur = conn.cursor()
